@@ -1,44 +1,71 @@
 package com.example.mbaprototype.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mbaprototype.data.DataSource
 import com.example.mbaprototype.data.model.BasketItem
+import com.example.mbaprototype.data.model.Category
 import com.example.mbaprototype.data.model.Product
 import com.example.mbaprototype.data.model.PurchaseHistory
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
+import java.util.UUID
+
+sealed interface ProductListItem {
+    data class CategoryHeader(val category: Category) : ProductListItem
+    data class ProductItem(val product: Product) : ProductListItem
+}
+
 
 class SharedViewModel : ViewModel() {
 
-    // --- All Products (for display and filtering) ---
     private val _allProducts = MutableStateFlow<List<Product>>(emptyList())
-    val allProducts: StateFlow<List<Product>> = _allProducts.asStateFlow()
+    private val _allCategories = MutableStateFlow<List<Category>>(emptyList())
+    private val _filteredProductFlow = MutableStateFlow<String?>(null)
 
-    // --- Filtered Products (based on search) ---
-    private val _filteredProducts = MutableStateFlow<List<Product>>(emptyList())
-    val filteredProducts: StateFlow<List<Product>> = _filteredProducts.asStateFlow()
+    val categorizedProductList: StateFlow<List<ProductListItem>> = _filteredProductFlow.map { query ->
+        val productsToCategorize = if (query.isNullOrBlank()) {
+            _allProducts.value
+        } else {
+            _allProducts.value.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                        DataSource.getCategoryById(it.categoryId)?.name?.contains(query, ignoreCase = true) == true
+            }
+        }
+        productsToCategorize.groupBy { product ->
+            _allCategories.value.find { it.id == product.categoryId }
+        }.filterKeys { it != null }
+            .flatMap { (category, productList) ->
+                listOf(ProductListItem.CategoryHeader(category!!)) + productList.map { ProductListItem.ProductItem(it) }
+            }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // --- Basket ---
+
     private val _basketItems = MutableStateFlow<List<BasketItem>>(emptyList())
     val basketItems: StateFlow<List<BasketItem>> = _basketItems.asStateFlow()
 
-    // --- Favorites ---
-    private val _favoriteProducts = MutableStateFlow<Set<String>>(emptySet()) // Store IDs for efficiency
+    val basketTotalCost: StateFlow<Double> = _basketItems.map { items ->
+        items.sumOf { it.product.price * it.quantity }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+
+    private val _favoriteProducts = MutableStateFlow<Set<String>>(emptySet())
     val favoriteProducts: StateFlow<Set<String>> = _favoriteProducts.asStateFlow()
 
-    // --- Past Purchases ---
     private val _pastPurchases = MutableStateFlow<List<PurchaseHistory>>(emptyList())
     val pastPurchases: StateFlow<List<PurchaseHistory>> = _pastPurchases.asStateFlow()
 
-    // --- Clicked Products (simple tracking for potential AI input) ---
     private val _clickedProductIds = MutableStateFlow<Set<String>>(emptySet())
     val clickedProductIds: StateFlow<Set<String>> = _clickedProductIds.asStateFlow()
 
-    // --- Recommendations (Placeholder) ---
     private val _recommendations = MutableStateFlow<List<Product>>(emptyList())
     val recommendations: StateFlow<List<Product>> = _recommendations.asStateFlow()
 
@@ -48,28 +75,52 @@ class SharedViewModel : ViewModel() {
     }
 
     private fun loadInitialData() {
-        viewModelScope.launch { // Use viewModelScope for lifecycle awareness
+        viewModelScope.launch {
             _allProducts.value = DataSource.products
-            _filteredProducts.value = DataSource.products // Initially show all
+            _allCategories.value = DataSource.categories
             _pastPurchases.value = DataSource.pastPurchases
-            // Load initial favorites if any (e.g., from saved preferences - mock for now)
-            // _favoriteProducts.value = setOf("prod1") // Example: Apple favorited initially
+            _filteredProductFlow.value = null
         }
     }
+
+    fun getBasketItemQuantity(productId: String): Int {
+        return _basketItems.value.find { it.product.id == productId }?.quantity ?: 0
+    }
+
 
     fun addProductToBasket(product: Product) {
         viewModelScope.launch {
             _basketItems.update { currentList ->
-                val existingItem = currentList.find { it.product.id == product.id }
-                if (existingItem != null) {
-                    // If item exists, update its quantity (optional, for now just replace/ensure it's there)
-                    currentList // Or implement quantity update if needed: currentList.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                val existingItemIndex = currentList.indexOfFirst { it.product.id == product.id }
+                if (existingItemIndex != -1) {
+                    val updatedItem = currentList[existingItemIndex].copy(
+                        quantity = currentList[existingItemIndex].quantity + 1
+                    )
+                    currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
                 } else {
-                    // If item doesn't exist, add it
                     currentList + BasketItem(product = product, quantity = 1)
                 }
             }
-            // Trigger recommendation update whenever basket changes
+            updateRecommendations()
+        }
+    }
+
+    fun decreaseBasketQuantity(productId: String) {
+        viewModelScope.launch {
+            _basketItems.update { currentList ->
+                val existingItemIndex = currentList.indexOfFirst { it.product.id == productId }
+                if (existingItemIndex != -1) {
+                    val currentItem = currentList[existingItemIndex]
+                    if (currentItem.quantity > 1) {
+                        val updatedItem = currentItem.copy(quantity = currentItem.quantity - 1)
+                        currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
+                    } else {
+                        currentList.filterNot { it.product.id == productId }
+                    }
+                } else {
+                    currentList
+                }
+            }
             updateRecommendations()
         }
     }
@@ -79,7 +130,6 @@ class SharedViewModel : ViewModel() {
             _basketItems.update { currentList ->
                 currentList.filterNot { it.product.id == productId }
             }
-            // Trigger recommendation update whenever basket changes
             updateRecommendations()
         }
     }
@@ -93,59 +143,64 @@ class SharedViewModel : ViewModel() {
                     currentFavorites + productId
                 }
             }
-            // Optionally trigger recommendation update based on favorites change
-            // updateRecommendations()
         }
     }
 
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
             _clickedProductIds.update { currentClicks ->
-                // Keep a limited history or just add unique clicks
-                (currentClicks + productId).toList().takeLast(20).toSet()  // Example: keep last 20 unique clicks
+                (currentClicks + productId).toList().takeLast(20).toSet()
             }
-            // Optionally trigger recommendation update on clicks
-            // updateRecommendations()
         }
     }
 
     fun searchProducts(query: String) {
-        viewModelScope.launch {
-            if (query.isBlank()) {
-                _filteredProducts.value = _allProducts.value
-            } else {
-                _filteredProducts.value = _allProducts.value.filter {
-                    it.name.contains(query, ignoreCase = true) ||
-                            DataSource.getCategoryById(it.categoryId)?.name?.contains(query, ignoreCase = true) == true
-                    // Add more search criteria if needed (e.g., ingredients)
-                }
-            }
-        }
+        _filteredProductFlow.value = query
     }
 
-    // --- AI Recommendation Placeholder ---
     private fun updateRecommendations() {
         viewModelScope.launch {
-            // **** THIS IS WHERE YOUR AI MODEL LOGIC WOULD GO ****
-            // Input: basketItems.value, favoriteProducts.value, clickedProductIds.value, pastPurchases.value
-            // Output: A list of recommended Product objects
-
-            // --- Mock Recommendation Logic ---
             val basketIds = _basketItems.value.map { it.product.id }.toSet()
-            val potentialRecs = _allProducts.value.filterNot { product ->
-                basketIds.contains(product.id) // Don't recommend items already in basket
+            val allProds = DataSource.products
+            val potentialRecs = allProds.filterNot { product ->
+                basketIds.contains(product.id)
             }
-
-            // Simple mock: recommend the first 2 items not in the basket
-            val mockRecs = potentialRecs.take(2)
-            // --- End Mock Logic ---
-
+            val mockRecs = potentialRecs.take(3)
             _recommendations.value = mockRecs
         }
     }
 
+    fun completePurchase(): Boolean {
+        val currentBasket = _basketItems.value
+        if (currentBasket.isEmpty()) {
+            return false
+        }
+        viewModelScope.launch {
+            val historyRecord = PurchaseHistory(
+                purchaseId = UUID.randomUUID().toString(),
+                purchaseDate = Date(),
+                items = currentBasket
+            )
+            _pastPurchases.update { currentHistory -> listOf(historyRecord) + currentHistory }
+            _basketItems.value = emptyList()
+            updateRecommendations()
+        }
+        return true
+    }
+
     fun getProductById(productId: String): Product? {
-        return _allProducts.value.find { it.id == productId }
+        return DataSource.products.find { it.id == productId }
+    }
+
+    fun getPurchaseById(id: String): PurchaseHistory? {
+        Log.d("SharedViewModel", "Searching for Purchase ID: $id")
+        Log.d("SharedViewModel", "Current _pastPurchases size: ${_pastPurchases.value.size}")
+        _pastPurchases.value.forEachIndexed { index, history ->
+            Log.d("SharedViewModel", "History[$index] ID: ${history.purchaseId}")
+        }
+        val found = _pastPurchases.value.find { it.purchaseId == id }
+        Log.d("SharedViewModel", "Find result for ID $id: ${if (found != null) "FOUND" else "NOT FOUND"}")
+        return found
     }
 
     fun isFavorite(productId: String): Boolean {

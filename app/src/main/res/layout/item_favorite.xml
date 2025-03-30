@@ -5,31 +5,38 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="4dp"
-    android:layout_marginVertical="2dp">
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="4dp"
+    app:cardElevation="1dp"
+    app:cardCornerRadius="8dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp">
+        android:paddingVertical="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:minHeight="56dp">
 
         <TextView
             android:id="@+id/text_favorite_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceListItem"
+            android:layout_marginEnd="8dp"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/button_remove_favorite"
-            tools:text="Favorite Product Name" />
+            tools:text="Favorite Product Name That Could Be Longer" />
 
         <ImageButton
             android:id="@+id/button_remove_favorite"
+            style="?attr/materialIconButtonStyle"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            style="?attr/materialIconButtonStyle"
             app:srcCompat="@drawable/ic_favorite_filled"
+            app:tint="?attr/colorPrimary"
             android:contentDescription="@string/remove_from_favorites"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"

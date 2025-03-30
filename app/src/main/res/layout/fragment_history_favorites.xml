@@ -5,20 +5,24 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:paddingBottom="16dp"
     tools:context=".ui.history.HistoryFavoritesFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="8dp">
+        android:paddingTop="16dp"
+        android:paddingHorizontal="8dp">
 
         <TextView
             android:id="@+id/text_favorites_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/favorites"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            android:layout_marginStart="8dp"
             android:layout_marginBottom="8dp"/>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -32,18 +36,21 @@
 
         <TextView
             android:id="@+id/text_empty_favorites"
+            style="@style/TextAppearance.MaterialComponents.Body1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/no_favorite_products_yet"
             android:gravity="center"
             android:visibility="gone"
-            android:layout_marginVertical="16dp"/>
+            android:paddingVertical="24dp"
+            android:textColor="?android:attr/textColorSecondary"/>
 
 
         <com.google.android.material.divider.MaterialDivider
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="16dp"/>
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"/>
 
 
         <TextView
@@ -51,7 +58,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/purchase_history"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+            android:layout_marginStart="8dp"
             android:layout_marginBottom="8dp"/>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -65,13 +73,14 @@
 
         <TextView
             android:id="@+id/text_empty_history"
+            style="@style/TextAppearance.MaterialComponents.Body1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/no_purchase_history_yet"
             android:gravity="center"
             android:visibility="gone"
-            android:layout_marginVertical="16dp"/>
-
+            android:paddingVertical="24dp"
+            android:textColor="?android:attr/textColorSecondary"/>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

@@ -8,11 +8,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.mbaprototype.data.model.Product
 import com.example.mbaprototype.databinding.ItemFavoriteBinding
 
-typealias OnRemoveFavoriteClick = (String) -> Unit // Pass product ID
+typealias OnRemoveFavoriteClick = (String) -> Unit
 
 class FavoritesAdapter(
     private val onRemoveFavoriteClick: OnRemoveFavoriteClick,
-    private val onFavoriteClick: (Product) -> Unit // Click to view details
+    private val onFavoriteClick: (Product) -> Unit
 ) : ListAdapter<Product, FavoritesAdapter.FavoriteViewHolder>(FavoriteDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FavoriteViewHolder {

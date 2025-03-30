@@ -49,20 +49,26 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("androidx.core:core-ktx:1.12.0") // Or newer
-    implementation("androidx.appcompat:appcompat:1.6.1") // Or newer
-    implementation("com.google.android.material:material:1.11.0") // Or newer
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4") // Or newer
-    // Add these lines:
+    // Core & UI
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.12.0") // Explicitly M3 v1.12.0
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // Lifecycle components (ViewModel, LiveData, LifecycleScope, repeatOnLifecycle)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0") // Provides viewModelScope
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")  // Provides lifecycleScope, repeatOnLifecycle
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0") // Optional but often used
+    // Lifecycle & ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0") // Keep if using LiveData
 
-    // Activity KTX (provides viewModels delegate for Activities)
-    implementation("androidx.activity:activity-ktx:1.9.0") // Or newer
+    // Navigation & Fragments
+    implementation("androidx.activity:activity-ktx:1.9.0")
+    implementation("androidx.fragment:fragment-ktx:1.7.0")
 
-    // Fragment KTX (provides activityViewModels delegate for Fragments)
-    implementation("androidx.fragment:fragment-ktx:1.7.0") // Or newer
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+
+    // Required for Material SearchBar/SearchView theming (might help attribute resolution)
+    implementation("androidx.activity:activity:1.9.0")
 }

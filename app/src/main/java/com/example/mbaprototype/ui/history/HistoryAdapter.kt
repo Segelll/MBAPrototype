@@ -1,5 +1,6 @@
 package com.example.mbaprototype.ui.history
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -11,13 +12,17 @@ import com.example.mbaprototype.databinding.ItemHistoryBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class HistoryAdapter : ListAdapter<PurchaseHistory, HistoryAdapter.HistoryViewHolder>(HistoryDiffCallback()) {
+typealias OnHistoryClick = (PurchaseHistory) -> Unit
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+class HistoryAdapter(
+    private val onHistoryClick: OnHistoryClick
+) : ListAdapter<PurchaseHistory, HistoryAdapter.HistoryViewHolder>(HistoryDiffCallback()) {
+
+    private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HistoryViewHolder {
         val binding = ItemHistoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return HistoryViewHolder(binding, dateFormat)
+        return HistoryViewHolder(binding, dateFormat, onHistoryClick)
     }
 
     override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
@@ -26,20 +31,31 @@ class HistoryAdapter : ListAdapter<PurchaseHistory, HistoryAdapter.HistoryViewHo
 
     class HistoryViewHolder(
         private val binding: ItemHistoryBinding,
-        private val dateFormat: SimpleDateFormat
+        private val dateFormat: SimpleDateFormat,
+        private val onHistoryClick: OnHistoryClick
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        @SuppressLint("SetTextI18n")
         fun bind(history: PurchaseHistory) {
             binding.textHistoryDate.text = itemView.context.getString(
                 R.string.history_date_prefix,
                 dateFormat.format(history.purchaseDate)
             )
 
-            val itemNames = history.items.joinToString(", ") { it.name }
-            binding.textHistoryItems.text = itemView.context.getString(
+            val itemNames = history.items.joinToString(", ") { it.product.name }
+            binding.textHistoryItemsSummary.text = itemView.context.getString(
                 R.string.history_items_prefix,
                 itemNames
             )
+
+            binding.textHistoryTotalCost.text = itemView.context.getString(
+                R.string.purchase_total_cost, // Use the generic total cost string
+                String.format(itemView.context.getString(R.string.price_format), history.totalCost)
+            )
+
+            binding.root.setOnClickListener {
+                onHistoryClick(history)
+            }
         }
     }
 

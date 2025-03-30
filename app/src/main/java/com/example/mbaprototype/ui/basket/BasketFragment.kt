@@ -7,28 +7,30 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.mbaprototype.databinding.FragmentBasketBinding // Import ViewBinding
+import com.example.mbaprototype.MBAPrototypeApplication // Added
+import com.example.mbaprototype.R
+import com.example.mbaprototype.databinding.FragmentBasketBinding
+import com.example.mbaprototype.ui.ProductListItem
 import com.example.mbaprototype.ui.SharedViewModel
-import com.example.mbaprototype.ui.products.ProductAdapter // Reuse ProductAdapter for recommendations
+import com.example.mbaprototype.ui.products.ProductAdapter
 import com.example.mbaprototype.ui.products.ProductDetailActivity
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
-
 
 class BasketFragment : Fragment() {
 
     private var _binding: FragmentBasketBinding? = null
     private val binding get() = _binding!!
 
-    private val sharedViewModel: SharedViewModel by activityViewModels()
-
+    private val sharedViewModel: SharedViewModel by lazy {
+        (requireActivity().application as MBAPrototypeApplication).sharedViewModel
+    }
     private lateinit var basketAdapter: BasketAdapter
-    private lateinit var recommendationsAdapter: ProductAdapter // Reuse ProductAdapter
+    private lateinit var recommendationsAdapter: ProductAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -41,66 +43,84 @@ class BasketFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerViews()
+        setupPurchaseButton()
         observeViewModel()
     }
 
     private fun setupRecyclerViews() {
-        basketAdapter = BasketAdapter(
-            onRemoveClick = { productId ->
-                sharedViewModel.removeProductFromBasket(productId)
-            }
-        )
+        basketAdapter = BasketAdapter { productId ->
+            sharedViewModel.removeProductFromBasket(productId)
+        }
         binding.recyclerViewBasket.apply {
             adapter = basketAdapter
             layoutManager = LinearLayoutManager(context)
             itemAnimator = null
         }
 
-        // Use ProductAdapter for recommendations list
         recommendationsAdapter = ProductAdapter(
             onProductClick = { product ->
-                // Track click?
                 sharedViewModel.trackProductClick(product.id)
-                // Navigate to detail
-                val intent = Intent(activity, ProductDetailActivity::class.java)
-                intent.putExtra(ProductDetailActivity.EXTRA_PRODUCT_ID, product.id)
+                val intent = Intent(activity, ProductDetailActivity::class.java).apply {
+                    putExtra(ProductDetailActivity.EXTRA_PRODUCT, product)
+                }
                 startActivity(intent)
             },
             onAddToBasketClick = { product ->
                 sharedViewModel.addProductToBasket(product)
-                Snackbar.make(binding.root, "${product.name} added to basket", Snackbar.LENGTH_SHORT)
-                    .setAnchorView(activity?.findViewById(com.example.mbaprototype.R.id.bottom_navigation_view))
+                Snackbar.make(binding.root, "${product.name} ${getString(R.string.added_updated_in_basket)}", Snackbar.LENGTH_SHORT)
+                    .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
                     .show()
             }
         )
         binding.recyclerViewRecommendations.apply {
             adapter = recommendationsAdapter
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false) // Horizontal layout? Or Vertical? Let's use Vertical for consistency.
-            // layoutManager = LinearLayoutManager(context) // Vertical layout
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             itemAnimator = null
+        }
+    }
+
+    private fun setupPurchaseButton() {
+        binding.buttonCompletePurchase.setOnClickListener {
+            val success = sharedViewModel.completePurchase()
+            if (success) {
+                Snackbar.make(binding.root, R.string.purchase_successful, Snackbar.LENGTH_LONG)
+                    .setAnchorView(R.id.bottom_navigation_view)
+                    .show()
+            } else {
+                Snackbar.make(binding.root, R.string.basket_empty_cannot_purchase, Snackbar.LENGTH_SHORT)
+                    .setAnchorView(R.id.bottom_navigation_view)
+                    .show()
+            }
         }
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Observe Basket Items
                 launch {
                     sharedViewModel.basketItems.collect { items ->
                         basketAdapter.submitList(items)
-                        binding.textEmptyBasket.isVisible = items.isEmpty()
-                        binding.recyclerViewBasket.isVisible = items.isNotEmpty()
+                        val isBasketEmpty = items.isEmpty()
+                        binding.textEmptyBasket.isVisible = isBasketEmpty
+                        binding.recyclerViewBasket.isVisible = !isBasketEmpty
+                        binding.buttonCompletePurchase.isEnabled = !isBasketEmpty
+                        binding.purchaseBar.isVisible = !isBasketEmpty
+                        binding.dividerBasket.isVisible = !isBasketEmpty
                     }
                 }
-
-                // Observe Recommendations
+                launch {
+                    sharedViewModel.basketTotalCost.collect { total ->
+                        binding.textBasketTotal.text = getString(R.string.basket_total, getString(R.string.price_format, total))
+                    }
+                }
                 launch {
                     sharedViewModel.recommendations.collect { recommendedProducts ->
-                        recommendationsAdapter.submitList(recommendedProducts)
-                        binding.textEmptyRecommendations.isVisible = recommendedProducts.isEmpty()
-                        binding.recyclerViewRecommendations.isVisible = recommendedProducts.isNotEmpty()
-                        // Show title only if there are recommendations or basket isn't empty?
-                        binding.textRecommendationsTitle.isVisible = recommendedProducts.isNotEmpty()
+                        val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }
+                        recommendationsAdapter.submitList(listItems)
+                        val hasRecommendations = listItems.isNotEmpty()
+                        binding.textEmptyRecommendations.isVisible = !hasRecommendations
+                        binding.recyclerViewRecommendations.isVisible = hasRecommendations
+                        binding.textRecommendationsTitle.isVisible = hasRecommendations
                     }
                 }
             }

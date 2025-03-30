@@ -8,9 +8,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mbaprototype.R
 import com.example.mbaprototype.data.model.BasketItem
-import com.example.mbaprototype.databinding.ItemBasketBinding // Import ViewBinding
+import com.example.mbaprototype.databinding.ItemBasketBinding
 
-typealias OnRemoveFromBasketClick = (String) -> Unit // Pass Product ID
+typealias OnRemoveFromBasketClick = (String) -> Unit
 
 class BasketAdapter(
     private val onRemoveClick: OnRemoveFromBasketClick
@@ -33,13 +33,11 @@ class BasketAdapter(
         @SuppressLint("SetTextI18n")
         fun bind(basketItem: BasketItem) {
             binding.textBasketItemName.text = basketItem.product.name
-            // Display price and quantity
             binding.textBasketItemPrice.text = String.format(
                 itemView.context.getString(R.string.basket_item_format),
-                String.format(itemView.context.getString(R.string.price_format), basketItem.product.price),
+                String.format(itemView.context.getString(R.string.basket_item_price_format), basketItem.product.price),
                 basketItem.quantity
             )
-
 
             binding.buttonRemoveFromBasket.setOnClickListener {
                 onRemoveClick(basketItem.product.id)
@@ -53,7 +51,7 @@ class BasketAdapter(
         }
 
         override fun areContentsTheSame(oldItem: BasketItem, newItem: BasketItem): Boolean {
-            return oldItem == newItem // Compares product and quantity
+            return oldItem == newItem
         }
     }
 }

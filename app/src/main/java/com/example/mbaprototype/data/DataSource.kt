@@ -1,12 +1,12 @@
 package com.example.mbaprototype.data
 
+import com.example.mbaprototype.data.model.BasketItem
 import com.example.mbaprototype.data.model.Category
 import com.example.mbaprototype.data.model.Product
 import com.example.mbaprototype.data.model.PurchaseHistory
 import java.util.Date
 import java.util.UUID
 
-// Simulates a remote or local data source
 object DataSource {
 
     val categories = listOf(
@@ -17,51 +17,38 @@ object DataSource {
 
     val products = listOf(
         Product(
-            id = "prod1",
-            name = "Organic Apples",
-            categoryId = "cat1",
-            price = 3.50,
-            ingredients = listOf("Apple"),
-            imageUrl = null // Add image URLs later if needed
+            id = "prod1", name = "Organic Apples", categoryId = "cat1", price = 3.50,
+            ingredients = listOf("Apple")
         ),
         Product(
-            id = "prod2",
-            name = "Whole Milk (1L)",
-            categoryId = "cat2",
-            price = 1.80,
-            ingredients = listOf("Milk", "Vitamin D"),
-            imageUrl = null
+            id = "prod2", name = "Whole Milk (1L)", categoryId = "cat2", price = 1.80,
+            ingredients = listOf("Milk", "Vitamin D")
         ),
         Product(
-            id = "prod3",
-            name = "Sourdough Bread",
-            categoryId = "cat3",
-            price = 4.20,
-            ingredients = listOf("Flour", "Water", "Salt", "Sourdough Starter"),
-            imageUrl = null
+            id = "prod3", name = "Sourdough Bread", categoryId = "cat3", price = 4.20,
+            ingredients = listOf("Flour", "Water", "Salt", "Sourdough Starter")
         ),
         Product(
-            id = "prod4",
-            name = "Cheddar Cheese (200g)",
-            categoryId = "cat2",
-            price = 3.10,
-            ingredients = listOf("Milk", "Salt", "Cheese Cultures", "Rennet"),
-            imageUrl = null
+            id = "prod4", name = "Cheddar Cheese (200g)", categoryId = "cat2", price = 3.10,
+            ingredients = listOf("Milk", "Salt", "Cheese Cultures", "Rennet")
         )
-        // Add more products as needed
     )
 
-    // Mock past purchases
     val pastPurchases = listOf(
         PurchaseHistory(
             purchaseId = UUID.randomUUID().toString(),
-            purchaseDate = Date(System.currentTimeMillis() - 86400000 * 7), // 7 days ago
-            items = listOf(products[1], products[2]) // Milk and Bread
+            purchaseDate = Date(System.currentTimeMillis() - 86400000 * 7),
+            items = listOf(
+                BasketItem(products[1], 2),
+                BasketItem(products[2], 1)
+            )
         ),
         PurchaseHistory(
             purchaseId = UUID.randomUUID().toString(),
-            purchaseDate = Date(System.currentTimeMillis() - 86400000 * 2), // 2 days ago
-            items = listOf(products[0]) // Apples
+            purchaseDate = Date(System.currentTimeMillis() - 86400000 * 2),
+            items = listOf(
+                BasketItem(products[0], 5)
+            )
         )
     )
 
@@ -71,5 +58,11 @@ object DataSource {
 
     fun getCategoryById(id: String): Category? {
         return categories.find { it.id == id }
+    }
+
+    fun getProductsByCategory(): Map<Category, List<Product>> {
+        return products.groupBy { product ->
+            categories.find { it.id == product.categoryId }!!
+        }
     }
 }

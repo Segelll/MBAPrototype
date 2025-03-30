@@ -1,17 +1,28 @@
 <resources>
-    <string name="app_name">MBAPrototype</string>
+    <string name="app_name">Market Basket AI</string>
 
     <string name="products">Products</string>
-    <string name="history_favorites">History &amp; Favs</string> <string name="basket">Basket</string>
+    <string name="history_favorites">History &amp; Favs</string>
+    <string name="basket">Basket</string>
 
     <string name="product_image">Product Image</string>
     <string name="add_to_basket">Add to Basket</string>
-    <string name="in_basket">In Basket</string> <string name="add_to_favorites">Add Favorite</string>
+    <string name="update_basket">Update Basket</string>
+    <string name="added_updated_in_basket">added/updated in basket</string>
+    <string name="add_to_favorites">Add Favorite</string>
     <string name="remove_from_favorites">Remove Favorite</string>
     <string name="ingredients">Ingredients</string>
     <string name="ingredient_information_not_available">Ingredient information not available.</string>
-    <string name="category_prefix">Category: %s</string> <string name="price_format">$%.2f</string> <string name="error_product_not_found">Error: Product details could not be loaded.</string>
+    <string name="category_prefix">Category: %s</string>
+    <string name="unknown_category">Unknown Category</string>
+    <string name="price_format">$%.2f</string>
+    <string name="error_product_not_found">Error: Product details could not be loaded.</string>
     <string name="search_products_hint">Search products or categories...</string>
+    <string name="product_details">Product Details</string>
+    <string name="remove_item">Remove Item</string>
+    <string name="increase_quantity">Increase Quantity</string>
+    <string name="decrease_quantity">Decrease Quantity</string>
+    <string name="product_removed_from_basket">Product removed from basket</string>
 
     <string name="favorites">Favorites</string>
     <string name="purchase_history">Purchase History</string>
@@ -19,13 +30,22 @@
     <string name="history_items_prefix">Items: %s</string>
     <string name="no_favorite_products_yet">No favorite products yet.</string>
     <string name="no_purchase_history_yet">No purchase history yet.</string>
+    <string name="purchase_details">Purchase Details</string>
+    <string name="purchase_total_cost">Total: %s</string>
+    <string name="purchase_date_header">Purchased on: %s</string>
+    <string name="error_purchase_not_found">Error: Purchase details could not be loaded.</string>
 
 
     <string name="current_basket">Current Basket</string>
     <string name="remove_from_basket">Remove from Basket</string>
     <string name="recommendations_for_you">Recommendations For You</string>
-    <string name="basket_item_format">%s (x%d)</string> <string name="your_basket_is_empty">Your basket is empty.</string>
-    <string name="no_recommendations_available_yet">No recommendations available yet. Add items to your basket!</string>
-
+    <string name="basket_item_format">%s (x%d)</string>
+    <string name="basket_item_price_format">$%.2f</string>
+    <string name="your_basket_is_empty">Your basket is empty.</string>
+    <string name="no_recommendations_available_yet">No recommendations available yet.</string>
+    <string name="complete_purchase">Complete Purchase</string>
+    <string name="purchase_successful">Purchase Successful!</string>
+    <string name="basket_empty_cannot_purchase">Basket is empty</string>
+    <string name="basket_total">Basket Total: %s</string>
 
 </resources>

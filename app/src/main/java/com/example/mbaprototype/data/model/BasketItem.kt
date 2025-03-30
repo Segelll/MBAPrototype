@@ -1,8 +1,10 @@
 package com.example.mbaprototype.data.model
 
-// Represents an item currently in the shopping basket (Product + quantity)
-// Although not strictly required by the prompt, it's good practice for baskets
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class BasketItem(
     val product: Product,
-    var quantity: Int = 1 // Default quantity is 1
-)
+    var quantity: Int = 1
+) : Parcelable

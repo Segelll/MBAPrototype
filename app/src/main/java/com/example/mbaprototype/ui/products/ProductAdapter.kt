@@ -7,77 +7,103 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mbaprototype.R
-import com.example.mbaprototype.data.DataSource
 import com.example.mbaprototype.data.model.Product
-import com.example.mbaprototype.databinding.ItemProductBinding // Import ViewBinding class
+import com.example.mbaprototype.databinding.ItemCategoryHeaderBinding
+import com.example.mbaprototype.databinding.ItemProductBinding
+import com.example.mbaprototype.ui.ProductListItem
 
-// Define lambda functions for click listeners
 typealias OnProductClick = (Product) -> Unit
 typealias OnAddToBasketClick = (Product) -> Unit
+
+private const val VIEW_TYPE_HEADER = 0
+private const val VIEW_TYPE_PRODUCT = 1
 
 class ProductAdapter(
     private val onProductClick: OnProductClick,
     private val onAddToBasketClick: OnAddToBasketClick
-) : ListAdapter<Product, ProductAdapter.ProductViewHolder>(ProductDiffCallback()) {
+) : ListAdapter<ProductListItem, RecyclerView.ViewHolder>(ProductListDiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
-        // Inflate using ViewBinding
-        val binding = ItemProductBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ProductViewHolder(binding, onProductClick, onAddToBasketClick)
+    override fun getItemViewType(position: Int): Int {
+        return when (getItem(position)) {
+            is ProductListItem.CategoryHeader -> VIEW_TYPE_HEADER
+            is ProductListItem.ProductItem -> VIEW_TYPE_PRODUCT
+        }
     }
 
-    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_HEADER -> CategoryHeaderViewHolder.from(parent)
+            VIEW_TYPE_PRODUCT -> ProductViewHolder.from(parent, onProductClick, onAddToBasketClick)
+            else -> throw ClassCastException("Unknown viewType $viewType")
+        }
     }
 
-    // ViewHolder class
-    class ProductViewHolder(
-        private val binding: ItemProductBinding, // Use ViewBinding
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (holder) {
+            is CategoryHeaderViewHolder -> {
+                val item = getItem(position) as ProductListItem.CategoryHeader
+                holder.bind(item)
+            }
+            is ProductViewHolder -> {
+                val item = getItem(position) as ProductListItem.ProductItem
+                holder.bind(item.product)
+            }
+        }
+    }
+
+    class CategoryHeaderViewHolder private constructor(private val binding: ItemCategoryHeaderBinding) : RecyclerView.ViewHolder(binding.root){
+        fun bind(item: ProductListItem.CategoryHeader) {
+            binding.textCategoryName.text = item.category.name
+        }
+        companion object {
+            fun from(parent: ViewGroup): CategoryHeaderViewHolder {
+                val layoutInflater = LayoutInflater.from(parent.context)
+                val binding = ItemCategoryHeaderBinding.inflate(layoutInflater, parent, false)
+                return CategoryHeaderViewHolder(binding)
+            }
+        }
+    }
+
+    class ProductViewHolder private constructor(
+        private val binding: ItemProductBinding,
         private val onProductClick: OnProductClick,
         private val onAddToBasketClick: OnAddToBasketClick
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        @SuppressLint("SetTextI18n") // Suppress warning for simple string concatenation
+        @SuppressLint("SetTextI18n")
         fun bind(product: Product) {
             binding.textProductName.text = product.name
             binding.textProductPrice.text = String.format(
-                itemView.context.getString(R.string.price_format), // Use string resource for format
+                itemView.context.getString(R.string.price_format),
                 product.price
             )
+            binding.root.setOnClickListener { onProductClick(product) }
+            binding.buttonAddToBasket.setOnClickListener { onAddToBasketClick(product) }
+            // binding.imageProduct.load(product.imageUrl) // Load image here
+        }
 
-            // Get category name
-            val category = DataSource.getCategoryById(product.categoryId)
-            binding.textProductCategory.text = category?.name ?: "Unknown Category"
-
-            // Set placeholder image or load actual image if URL available
-            // binding.imageProduct.load(product.imageUrl) // Using Coil or Glide library later
-
-            // Handle click on the whole item
-            binding.root.setOnClickListener {
-                onProductClick(product)
+        companion object {
+            fun from(parent: ViewGroup, onProductClick: OnProductClick, onAddToBasketClick: OnAddToBasketClick): ProductViewHolder {
+                val layoutInflater = LayoutInflater.from(parent.context)
+                val binding = ItemProductBinding.inflate(layoutInflater, parent, false)
+                return ProductViewHolder(binding, onProductClick, onAddToBasketClick)
             }
-
-            // Handle click on the add button
-            binding.buttonAddToBasket.setOnClickListener {
-                onAddToBasketClick(product)
-                // Optional: Visually indicate it was added (e.g., change icon briefly)
-                // This button doesn't change state permanently here, detail view does.
-            }
-
-            // Example: Visually disable button if already in basket (requires access to basket state)
-            // This logic is better handled in ProductDetail or Basket screen,
-            // but could be done here if the Adapter has access to the basket state.
-            // binding.buttonAddToBasket.isEnabled = !isProductInBasket(product.id)
         }
     }
 
-    // DiffUtil for efficient list updates
-    class ProductDiffCallback : DiffUtil.ItemCallback<Product>() {
-        override fun areItemsTheSame(oldItem: Product, newItem: Product): Boolean {
-            return oldItem.id == newItem.id
+    class ProductListDiffCallback : DiffUtil.ItemCallback<ProductListItem>() {
+        override fun areItemsTheSame(oldItem: ProductListItem, newItem: ProductListItem): Boolean {
+            return when {
+                oldItem is ProductListItem.CategoryHeader && newItem is ProductListItem.CategoryHeader ->
+                    oldItem.category.id == newItem.category.id
+                oldItem is ProductListItem.ProductItem && newItem is ProductListItem.ProductItem ->
+                    oldItem.product.id == newItem.product.id
+                else -> false
+            }
         }
 
-        override fun areContentsTheSame(oldItem: Product, newItem: Product): Boolean {
+        @SuppressLint("DiffUtilEquals")
+        override fun areContentsTheSame(oldItem: ProductListItem, newItem: ProductListItem): Boolean {
             return oldItem == newItem
         }
     }
