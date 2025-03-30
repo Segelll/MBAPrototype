@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">MBAPrototype</string>
+
+    <string name="products">Products</string>
+    <string name="history_favorites">History &amp; Favs</string> <string name="basket">Basket</string>
+
+    <string name="product_image">Product Image</string>
+    <string name="add_to_basket">Add to Basket</string>
+    <string name="in_basket">In Basket</string> <string name="add_to_favorites">Add Favorite</string>
+    <string name="remove_from_favorites">Remove Favorite</string>
+    <string name="ingredients">Ingredients</string>
+    <string name="ingredient_information_not_available">Ingredient information not available.</string>
+    <string name="category_prefix">Category: %s</string> <string name="price_format">$%.2f</string> <string name="error_product_not_found">Error: Product details could not be loaded.</string>
+    <string name="search_products_hint">Search products or categories...</string>
+
+    <string name="favorites">Favorites</string>
+    <string name="purchase_history">Purchase History</string>
+    <string name="history_date_prefix">Date: %s</string>
+    <string name="history_items_prefix">Items: %s</string>
+    <string name="no_favorite_products_yet">No favorite products yet.</string>
+    <string name="no_purchase_history_yet">No purchase history yet.</string>
+
+
+    <string name="current_basket">Current Basket</string>
+    <string name="remove_from_basket">Remove from Basket</string>
+    <string name="recommendations_for_you">Recommendations For You</string>
+    <string name="basket_item_format">%s (x%d)</string> <string name="your_basket_is_empty">Your basket is empty.</string>
+    <string name="no_recommendations_available_yet">No recommendations available yet. Add items to your basket!</string>
+
+
+</resources>
