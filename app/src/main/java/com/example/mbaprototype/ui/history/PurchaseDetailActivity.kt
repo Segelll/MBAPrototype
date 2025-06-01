@@ -1,98 +1,91 @@
 package com.example.mbaprototype.ui.history
 
-import android.icu.text.SimpleDateFormat // Use ICU version for more robust date/time formatting
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mbaprototype.MBAPrototypeApplication
 import com.example.mbaprototype.R
 import com.example.mbaprototype.data.model.PurchaseHistory
-import com.example.mbaprototype.databinding.ActivityPurchaseDetailBinding
+import com.example.mbaprototype.databinding.ActivityPurchaseDetailBinding // Assumes layout is activity_purchase_detail.xml
 import com.example.mbaprototype.ui.SharedViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Locale
 
 class PurchaseDetailActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityPurchaseDetailBinding
-    private val viewModel: SharedViewModel by lazy {
-        (application as MBAPrototypeApplication).sharedViewModel
-    }
-    private lateinit var detailAdapter: PurchaseDetailAdapter
 
     companion object {
         const val EXTRA_PURCHASE_ID = "extra_purchase_id"
     }
 
+    private lateinit var binding: ActivityPurchaseDetailBinding
+    private val sharedViewModel: SharedViewModel by lazy {
+        (application as MBAPrototypeApplication).sharedViewModel
+    }
+    private lateinit var purchaseDetailAdapter: PurchaseDetailAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // This will inflate R.layout.activity_purchase_detail
         binding = ActivityPurchaseDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setSupportActionBar(binding.toolbarPurchaseDetail)
+        setSupportActionBar(binding.toolbarPurchaseDetail) // Expects @+id/toolbar_purchase_detail
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        // Title is already set in XML, but can be overridden if needed
-        // supportActionBar?.title = getString(R.string.purchase_details)
+        supportActionBar?.title = getString(R.string.title_purchase_detail)
 
         val purchaseId = intent.getStringExtra(EXTRA_PURCHASE_ID)
-        Log.d("PurchaseDetailActivity", "Received Purchase ID: $purchaseId")
 
-        if (purchaseId.isNullOrBlank()) {
-            Log.e("PurchaseDetailActivity", "Error: Purchase ID received is null or blank.")
-            showErrorAndFinish()
-            return
-        }
-
-        Log.d("PurchaseDetailActivity", "Calling viewModel.getPurchaseById for ID: $purchaseId")
-        val purchaseHistory = viewModel.getPurchaseById(purchaseId)
-
-        if (purchaseHistory == null) {
-            Log.e("PurchaseDetailActivity", "ViewModel returned null for PurchaseHistory ID: $purchaseId")
-            Log.d("PurchaseDetailActivity", "Current purchase history size in VM: ${viewModel.pastPurchases.value.size}")
-            viewModel.pastPurchases.value.forEachIndexed { index, history ->
-                Log.d("PurchaseDetailActivity", "VM History[$index]: ID=${history.purchaseId}")
-            }
-            showErrorAndFinish()
-            return
-        }
-
-        Log.d("PurchaseDetailActivity", "Successfully found PurchaseHistory: $purchaseHistory")
         setupRecyclerView()
-        populateUI(purchaseHistory)
+
+        if (purchaseId == null) {
+            binding.textPurchaseDetailError.text = getString(R.string.error_purchase_id_missing) // Expects @+id/text_purchase_detail_error
+            binding.textPurchaseDetailError.isVisible = true
+            binding.recyclerViewPurchaseItems.isVisible = false // Expects @+id/recycler_view_purchase_items
+            binding.textPurchaseDate.isVisible = false // Expects @+id/text_purchase_date
+            binding.layoutPurchaseContent.isVisible = false // Hide content group
+            return
+        } else {
+            binding.layoutPurchaseContent.isVisible = true
+        }
+
+        lifecycleScope.launch {
+            val purchaseHistory = sharedViewModel.getPurchaseById(purchaseId)
+            if (purchaseHistory == null) {
+                binding.textPurchaseDetailError.text = getString(R.string.error_purchase_not_found)
+                binding.textPurchaseDetailError.isVisible = true
+                binding.recyclerViewPurchaseItems.isVisible = false
+                binding.textPurchaseDate.isVisible = false
+                binding.layoutPurchaseContent.isVisible = false // Hide content group on error
+            } else {
+                binding.layoutPurchaseContent.isVisible = true
+                populateUI(purchaseHistory)
+            }
+        }
+    }
+
+    private fun setupRecyclerView() {
+        purchaseDetailAdapter = PurchaseDetailAdapter()
+        binding.recyclerViewPurchaseItems.apply { // Expects @+id/recycler_view_purchase_items
+            layoutManager = LinearLayoutManager(this@PurchaseDetailActivity)
+            adapter = purchaseDetailAdapter
+        }
+    }
+
+    private fun populateUI(purchase: PurchaseHistory) {
+        binding.textPurchaseDetailError.isVisible = false
+        binding.recyclerViewPurchaseItems.isVisible = true
+        binding.textPurchaseDate.isVisible = true
+
+        val dateFormat = SimpleDateFormat("dd MMMM yyyy, HH:mm", Locale.getDefault())
+        binding.textPurchaseDate.text = getString(R.string.purchase_date_prefix, dateFormat.format(purchase.purchaseDate)) // Expects @+id/text_purchase_date
+        purchaseDetailAdapter.submitList(purchase.items)
     }
 
     override fun onSupportNavigateUp(): Boolean {
         onBackPressedDispatcher.onBackPressed()
         return true
-    }
-
-    private fun showErrorAndFinish() {
-        Toast.makeText(this, R.string.error_purchase_not_found, Toast.LENGTH_LONG).show()
-        finish()
-    }
-
-    private fun setupRecyclerView() {
-        detailAdapter = PurchaseDetailAdapter()
-        binding.recyclerViewPurchaseItems.apply {
-            adapter = detailAdapter
-            layoutManager = LinearLayoutManager(this@PurchaseDetailActivity)
-            // itemAnimator = DefaultItemAnimator() // Optional: for default animations
-        }
-    }
-
-    private fun populateUI(history: PurchaseHistory) {
-        // Using ICU SimpleDateFormat for potentially better locale handling and more pattern options
-        val dateFormat = SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
-
-        binding.textPurchaseDetailDate.text = getString(R.string.purchase_date_header, dateFormat.format(history.purchaseDate))
-        // Total cost is no longer displayed
-        // binding.textPurchaseDetailTotal.text = getString(R.string.purchase_total_cost, getString(R.string.price_format, history.totalCost))
-        binding.textPurchaseDetailItemCount.text = getString(R.string.purchase_item_count_details, history.items.sumOf { it.quantity })
-
-
-        detailAdapter.submitList(history.items)
-        binding.recyclerViewPurchaseItems.isVisible = history.items.isNotEmpty()
     }
 }

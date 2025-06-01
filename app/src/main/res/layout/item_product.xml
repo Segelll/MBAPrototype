@@ -16,16 +16,30 @@
         android:paddingBottom="8dp">
 
         <ImageView
-            android:id="@+id/image_product"
+            android:id="@+id/image_product_background"
             android:layout_width="0dp"
             android:layout_height="120dp"
-            android:scaleType="centerCrop"
-            android:background="?attr/colorSurfaceVariant"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:contentDescription="@string/product_image"
-            tools:srcCompat="@tools:sample/backgrounds/scenic" />
+            android:contentDescription="@string/product_image_background_desc"
+            tools:background="#E0E0E0" />
+
+        <TextView
+            android:id="@+id/text_product_first_word"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceHeadline5"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintTop_toTopOf="@id/image_product_background"
+            app:layout_constraintBottom_toBottomOf="@id/image_product_background"
+            app:layout_constraintStart_toStartOf="@id/image_product_background"
+            app:layout_constraintEnd_toEndOf="@id/image_product_background"
+            tools:text="PRODUCT"
+            tools:textColor="@android:color/black"/>
 
         <TextView
             android:id="@+id/text_product_name"
@@ -38,7 +52,7 @@
             android:maxLines="2"
             android:ellipsize="end"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/image_product"
+            app:layout_constraintTop_toBottomOf="@id/image_product_background"
             app:layout_constraintEnd_toStartOf="@+id/button_add_to_basket"
             tools:text="Product Name Very Long To Test Wrapping" />
 
@@ -69,7 +83,7 @@
             app:tint="?attr/colorPrimary"
             android:contentDescription="@string/add_to_basket"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/image_product"
+            app:layout_constraintTop_toBottomOf="@id/image_product_background"
             app:layout_constraintBottom_toBottomOf="parent"
             android:layout_marginTop="8dp"/>
 

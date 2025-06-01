@@ -55,4 +55,13 @@
     <string name="recommendations_for_this_product">Similar Items You Might Like</string>
     <string name="no_detail_recommendations_available">No recommendations available right now.</string>
     <string name="product_details_title">Product Details</string>
+    <string name="product_image_background_desc">Product visual placeholder</string>
+    <string name="title_history">History</string>
+    <string name="title_favorites">Favorites</string>
+    <string name="no_purchase_history">You have no past purchases.</string>
+    <string name="no_favorites_yet">You haven\'t added any favorites yet.</string>
+    <string name="title_purchase_detail">Purchase Details</string>
+    <string name="error_purchase_id_missing">Purchase ID is missing.</string>
+    <string name="purchase_date_prefix">Date: %s</string>
+    <string name="purchased_items">Purchased Items</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.example.mbaprototype.ui.products
 
 import android.annotation.SuppressLint
+import android.graphics.drawable.ColorDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,7 +15,8 @@ import com.example.mbaprototype.databinding.ItemCategoryHeaderBinding
 import com.example.mbaprototype.databinding.ItemCategorySelectorBinding
 import com.example.mbaprototype.databinding.ItemProductBinding
 import com.example.mbaprototype.ui.ProductListItem
-import com.example.mbaprototype.ui.SharedViewModel // Added import for SharedViewModel
+import com.example.mbaprototype.ui.SharedViewModel
+import com.example.mbaprototype.utils.CategoryColorUtil
 import com.google.android.material.chip.Chip
 
 typealias OnProductClick = (Product) -> Unit
@@ -22,7 +24,6 @@ typealias OnAddToBasketClick = (Product) -> Unit
 typealias OnCategoryHeaderClick = (Category) -> Unit
 typealias OnCategoryChipSelected = (categoryId: String?) -> Unit
 
-// Changed visibility from private to internal to be accessible in ProductsFragment
 internal const val VIEW_TYPE_CATEGORY_SELECTOR = 0
 internal const val VIEW_TYPE_HEADER = 1
 internal const val VIEW_TYPE_PRODUCT = 2
@@ -40,7 +41,6 @@ class ProductAdapter(
             is ProductListItem.CategorySelectorItem -> VIEW_TYPE_CATEGORY_SELECTOR
             is ProductListItem.CategoryHeader -> VIEW_TYPE_HEADER
             is ProductListItem.ProductItem -> VIEW_TYPE_PRODUCT
-            // else -> throw IllegalStateException("Unknown view type at position $position") // Should not happen with sealed interface
         }
     }
 
@@ -150,6 +150,29 @@ class ProductAdapter(
             val category = sharedViewModel.getCategoryById(product.categoryId)
             binding.textProductCategory.text = category?.name ?: itemView.context.getString(R.string.unknown_category)
             binding.textProductCategory.visibility = View.VISIBLE
+
+            val (backgroundColor, textColor) = CategoryColorUtil.getColorsForCategory(product.categoryId)
+            binding.imageProductBackground.setImageDrawable(ColorDrawable(backgroundColor))
+
+            val words = product.name.split(" ")
+            var textToDisplay = ""
+
+            if (words.isNotEmpty()) {
+                val firstWord = words[0]
+                // Check if the first word consists only of digits
+                if (firstWord.isNotBlank() && firstWord.all { it.isDigit() }) {
+                    textToDisplay = if (words.size > 1) {
+                        "${words[0]} ${words[1]}".take(15) // Take first two words, limit combined length
+                    } else {
+                        firstWord.take(10) // Only one word (a number), limit length
+                    }
+                } else {
+                    textToDisplay = firstWord.take(10) // First word is not a number (or empty), limit length
+                }
+            }
+
+            binding.textProductFirstWord.text = textToDisplay.uppercase()
+            binding.textProductFirstWord.setTextColor(textColor)
 
             binding.root.setOnClickListener { onProductClick(product) }
             binding.buttonAddToBasket.setOnClickListener { onAddToBasketClick(product) }
