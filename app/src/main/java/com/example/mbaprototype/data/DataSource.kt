@@ -19,31 +19,28 @@ object DataSource {
     lateinit var categories: List<Category>
         private set
 
-    // pastPurchases, ürün listesi yüklendikten sonra initialize edilmeli.
-    // Bu yüzden lateinit var yapıp, initProductsAndCategories sonrası initialize edeceğiz.
     lateinit var pastPurchases: List<PurchaseHistory>
         private set
 
 
     fun init(context: Context) {
         if (::products.isInitialized && ::categories.isInitialized) {
-            // Veri zaten yüklenmişse tekrar yükleme
             return
         }
-        loadProductsAndCategoriesFromCsv(context, "urunler.csv")
+        loadProductsAndCategoriesFromCsv(context, "urunler.csv") //
         initializePastPurchases()
     }
 
     private fun loadProductsAndCategoriesFromCsv(context: Context, fileName: String) {
         val tempProducts = mutableListOf<Product>()
-        val tempCategoryMap = mutableMapOf<String, String>() // categoryName to categoryId
+        val tempCategoryMap = mutableMapOf<String, String>()
         var categoryCounter = 1
 
         try {
             context.assets.open(fileName).use { inputStream ->
                 BufferedReader(InputStreamReader(inputStream)).use { reader ->
                     var line: String?
-                    reader.readLine() // Başlık satırını atla (productId,ad,icerik,kategori)
+                    reader.readLine()
 
                     while (reader.readLine().also { line = it } != null) {
                         val tokens = line!!.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)".toRegex())
@@ -51,9 +48,16 @@ object DataSource {
 
                         if (tokens.size >= 4) {
                             val productId = tokens[0]
-                            val ad = tokens[1]
+                            val rawAd = tokens[1] // Ürün adını ham olarak al
                             val icerik = tokens[2]
-                            val kategori = tokens[3]
+                            val rawKategori = tokens[3] // Kategori adını ham olarak al
+
+                            // Boş ürün adları için varsayılan değer ata
+                            val ad = if (rawAd.isBlank()) "İsimsiz Ürün" else rawAd
+
+                            // Boş kategori adları için varsayılan değer ata
+                            val kategori = if (rawKategori.isBlank()) "Diğer" else rawKategori
+
 
                             val categoryId = tempCategoryMap.getOrPut(kategori) {
                                 "cat${categoryCounter++}"
@@ -62,9 +66,9 @@ object DataSource {
                             tempProducts.add(
                                 Product(
                                     id = productId,
-                                    name = ad,
+                                    name = ad, // İşlenmiş ürün adını kullan
                                     categoryId = categoryId,
-                                    price = null, // Fiyat bilgisi CSV'de yok ve gösterilmeyecek
+                                    price = null,
                                     ingredients = parseIngredients(icerik)
                                 )
                             )
@@ -74,19 +78,18 @@ object DataSource {
             }
         } catch (e: IOException) {
             Log.e("DataSource", "Error reading CSV file: $fileName", e)
-            // Hata durumunda boş listelerle devam et veya bir hata mekanizması kullan
             tempProducts.clear()
             tempCategoryMap.clear()
         }
 
         products = tempProducts.toList()
-        categories = tempCategoryMap.map { (name, id) -> Category(id = id, name = name) }.toList()
+        categories = tempCategoryMap.map { (name, id) -> Category(id = id, name = name) }.toList() //
 
         if (products.isEmpty()) {
-            Log.w("DataSource", "No products loaded from CSV. Product list is empty.")
+            Log.w("DataSource", "No products loaded from CSV. Product list is empty.") //
         }
         if (categories.isEmpty()) {
-            Log.w("DataSource", "No categories derived from CSV. Category list is empty.")
+            Log.w("DataSource", "No categories derived from CSV. Category list is empty.") //
         }
     }
 
@@ -95,12 +98,11 @@ object DataSource {
     }
 
     private fun initializePastPurchases() {
-        // products listesi yüklendikten sonra pastPurchases'ı initialize et
-        pastPurchases = if (products.size >= 2) {
+        pastPurchases = if (::products.isInitialized && products.size >= 2) { // products başlatıldıktan sonra kontrol et
             listOf(
                 PurchaseHistory(
                     purchaseId = UUID.randomUUID().toString(),
-                    purchaseDate = Date(System.currentTimeMillis() - 86400000 * 7), // 7 days ago
+                    purchaseDate = Date(System.currentTimeMillis() - 86400000 * 7),
                     items = listOf(
                         BasketItem(products[0], 2),
                         BasketItem(products[1], 1)
@@ -108,7 +110,7 @@ object DataSource {
                 ),
                 PurchaseHistory(
                     purchaseId = UUID.randomUUID().toString(),
-                    purchaseDate = Date(System.currentTimeMillis() - 86400000 * 2), // 2 days ago
+                    purchaseDate = Date(System.currentTimeMillis() - 86400000 * 2),
                     items = if (products.size >= 3) listOf(BasketItem(products[2], 5)) else emptyList()
                 )
             )
@@ -130,8 +132,10 @@ object DataSource {
 
     fun getProductsByCategory(): Map<Category, List<Product>> {
         if (!::products.isInitialized || !::categories.isInitialized) return emptyMap()
+        // groupBy içinde kategori bulunamazsa oluşabilecek hatayı engellemek için null olmayan kategoriye filtrele
         return products.groupBy { product ->
-            categories.find { it.id == product.categoryId }!!
-        }
+            categories.find { it.id == product.categoryId }
+        }.filterKeys { it != null }
+            .mapKeys { it.key!! } // Null olmayan key'lere dönüştür
     }
 }

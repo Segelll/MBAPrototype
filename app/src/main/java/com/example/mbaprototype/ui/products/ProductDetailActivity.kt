@@ -1,19 +1,22 @@
 package com.example.mbaprototype.ui.products
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-// import androidx.core.content.ContextCompat // Artık selector kullanıldığı için gerekmeyebilir
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mbaprototype.MBAPrototypeApplication
 import com.example.mbaprototype.R
 import com.example.mbaprototype.data.model.Product
 import com.example.mbaprototype.databinding.ActivityProductDetailBinding
+import com.example.mbaprototype.ui.ProductListItem
 import com.example.mbaprototype.ui.SharedViewModel
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -25,6 +28,7 @@ class ProductDetailActivity : AppCompatActivity() {
         (application as MBAPrototypeApplication).sharedViewModel
     }
     private var currentProduct: Product? = null
+    private lateinit var recommendationsAdapter: ProductAdapter
 
     companion object {
         const val EXTRA_PRODUCT = "extra_product"
@@ -37,6 +41,9 @@ class ProductDetailActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbarDetail)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Set a generic title for the toolbar, or leave it to the XML
+        supportActionBar?.title = getString(R.string.product_details_title)
+
 
         currentProduct = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_PRODUCT, Product::class.java)
@@ -53,7 +60,9 @@ class ProductDetailActivity : AppCompatActivity() {
         currentProduct?.let { product ->
             populateUI(product)
             setupButtonClickListeners(product)
-            observeViewModelState(product.id)
+            setupRecommendationsRecyclerView()
+            observeViewModelState(product.id, product.categoryId)
+            sharedViewModel.updateProductDetailRecommendations(product.categoryId, product.id)
         }
     }
 
@@ -68,15 +77,12 @@ class ProductDetailActivity : AppCompatActivity() {
     }
 
     private fun populateUI(product: Product) {
-        binding.collapsingToolbarLayout.title = product.name
-        binding.textDetailProductName.text = product.name
-        // Fiyat gösterilmiyor
+        // Set the product name in the dedicated TextView in the content area
+        binding.textDetailProductNameMain.text = product.name
 
-        // Kategori adını SharedViewModel'den alarak göster
         val category = sharedViewModel.allCategories.value.find { it.id == product.categoryId }
-        binding.textDetailCategory.text = getString(R.string.category_prefix, category?.name ?: getString(R.string.unknown_category))
+        binding.textDetailCategory.text = category?.name ?: getString(R.string.unknown_category)
 
-        // İçerik bilgilerini göster
         if (product.ingredients.isNullOrEmpty()) {
             binding.textDetailIngredients.isVisible = false
             binding.textNoIngredients.isVisible = true
@@ -87,12 +93,37 @@ class ProductDetailActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupRecommendationsRecyclerView() {
+        recommendationsAdapter = ProductAdapter(
+            onProductClick = { product ->
+                sharedViewModel.trackProductClick(product.id)
+                val intent = Intent(this, ProductDetailActivity::class.java).apply {
+                    putExtra(ProductDetailActivity.EXTRA_PRODUCT, product)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+                finish()
+            },
+            onAddToBasketClick = { product ->
+                sharedViewModel.addProductToBasket(product)
+                Snackbar.make(binding.root, "${product.name} ${getString(R.string.added_updated_in_basket)}", Snackbar.LENGTH_SHORT).show()
+            },
+            onCategoryHeaderClick = { /* Not applicable */ },
+            onCategoryChipSelected = { /* Not applicable */ },
+            sharedViewModel = sharedViewModel
+        )
+        binding.recyclerViewDetailRecommendations.apply {
+            adapter = recommendationsAdapter
+            layoutManager = LinearLayoutManager(this@ProductDetailActivity, LinearLayoutManager.HORIZONTAL, false)
+        }
+    }
+
     private fun setupButtonClickListeners(product: Product) {
         binding.buttonDetailAddInitial.setOnClickListener {
             sharedViewModel.addProductToBasket(product)
         }
         binding.buttonQuantityIncrease.setOnClickListener {
-            sharedViewModel.addProductToBasket(product) // Zaten sepetteyse miktarını artırır
+            sharedViewModel.addProductToBasket(product)
         }
         binding.buttonQuantityDecrease.setOnClickListener {
             sharedViewModel.decreaseBasketQuantity(product.id)
@@ -102,17 +133,15 @@ class ProductDetailActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.product_removed_from_basket, Toast.LENGTH_SHORT).show()
         }
         binding.buttonDetailToggleFavorite.setOnClickListener {
-            // Tıklama anındaki currentProduct'ı kullanmak daha güvenli
             currentProduct?.let { prod ->
                 sharedViewModel.toggleFavorite(prod.id)
             }
         }
     }
 
-    private fun observeViewModelState(productId: String) {
+    private fun observeViewModelState(productId: String, categoryId: String?) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // Sepet miktarını gözlemle
                 launch {
                     sharedViewModel.basketItems
                         .map { list -> list.find { it.product.id == productId }?.quantity ?: 0 }
@@ -121,7 +150,6 @@ class ProductDetailActivity : AppCompatActivity() {
                             updateQuantityUI(quantity)
                         }
                 }
-                // Favori durumunu gözlemle
                 launch {
                     sharedViewModel.favoriteProducts
                         .map { favorites -> favorites.contains(productId) }
@@ -129,6 +157,15 @@ class ProductDetailActivity : AppCompatActivity() {
                         .collect { isFavorite ->
                             updateFavoriteButtonState(isFavorite)
                         }
+                }
+                launch {
+                    sharedViewModel.productDetailRecommendations.collect { recommendedProducts ->
+                        val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }
+                        recommendationsAdapter.submitList(listItems)
+                        binding.textDetailRecommendationsTitle.isVisible = listItems.isNotEmpty()
+                        binding.recyclerViewDetailRecommendations.isVisible = listItems.isNotEmpty()
+                        binding.textNoDetailRecommendations.isVisible = listItems.isEmpty()
+                    }
                 }
             }
         }
@@ -139,14 +176,13 @@ class ProductDetailActivity : AppCompatActivity() {
             binding.textQuantity.text = quantity.toString()
             binding.quantitySelectorGroup.isVisible = true
             binding.buttonDetailAddInitial.isVisible = false
-            binding.buttonQuantityDecrease.isEnabled = true // Miktar 1'den fazlaysa azaltma butonu aktif
         } else {
             binding.quantitySelectorGroup.isVisible = false
             binding.buttonDetailAddInitial.isVisible = true
         }
+        binding.buttonQuantityDecrease.isEnabled = quantity > 0
     }
 
-    // Favori butonunun görsel durumunu `isSelected` ile yönet
     private fun updateFavoriteButtonState(isFavorite: Boolean) {
         binding.buttonDetailToggleFavorite.isSelected = isFavorite
         binding.buttonDetailToggleFavorite.contentDescription = if (isFavorite) {
@@ -154,5 +190,10 @@ class ProductDetailActivity : AppCompatActivity() {
         } else {
             getString(R.string.add_to_favorites)
         }
+    }
+
+    override fun onDestroy() {
+        binding.recyclerViewDetailRecommendations.adapter = null
+        super.onDestroy()
     }
 }

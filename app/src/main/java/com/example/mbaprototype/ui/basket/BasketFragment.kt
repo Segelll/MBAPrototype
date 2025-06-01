@@ -30,7 +30,7 @@ class BasketFragment : Fragment() {
         (requireActivity().application as MBAPrototypeApplication).sharedViewModel
     }
     private lateinit var basketAdapter: BasketAdapter
-    private lateinit var recommendationsAdapter: ProductAdapter
+    private lateinit var recommendationsAdapter: ProductAdapter // Using ProductAdapter for recommendations
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -48,15 +48,26 @@ class BasketFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        basketAdapter = BasketAdapter { productId ->
-            sharedViewModel.removeProductFromBasket(productId)
-        }
+        basketAdapter = BasketAdapter(
+            onRemoveClick = { productId ->
+                sharedViewModel.removeProductFromBasket(productId)
+                // Optional: Show a Snackbar or Toast for removal
+            },
+            onIncreaseClick = { productId ->
+                val product = sharedViewModel.basketItems.value.find { it.product.id == productId }?.product
+                product?.let { sharedViewModel.addProductToBasket(it) } // addProductToBasket handles increment
+            },
+            onDecreaseClick = { productId ->
+                sharedViewModel.decreaseBasketQuantity(productId)
+            }
+        )
         binding.recyclerViewBasket.apply {
             adapter = basketAdapter
             layoutManager = LinearLayoutManager(context)
-            itemAnimator = null
+            itemAnimator = null // Or use DefaultItemAnimator if you prefer
         }
 
+        // Recommendations Adapter setup (using ProductAdapter)
         recommendationsAdapter = ProductAdapter(
             onProductClick = { product ->
                 sharedViewModel.trackProductClick(product.id)
@@ -71,15 +82,9 @@ class BasketFragment : Fragment() {
                     .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
                     .show()
             },
-            onCategoryHeaderClick = { category ->
-                // BasketFragment'taki recommendationsAdapter için kategori başlığı tıklaması
-                // genellikle burada anlamlı bir eylem gerektirmez çünkü kategori başlıkları
-                // bu bölümde gösterilmiyor olabilir.
-                // İsterseniz buraya ProductsFragment'taki gibi bir filtreleme mantığı ekleyebilirsiniz
-                // ya da şimdilik boş bırakabilirsiniz.
-                // Örneğin: sharedViewModel.searchProductsOrCategory(category.name)
-                // activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation_view)?.selectedItemId = R.id.navigation_products
-            }
+            onCategoryHeaderClick = { /* Not used for horizontal recommendations */ },
+            onCategoryChipSelected = { /* Not used */},
+            sharedViewModel = sharedViewModel // Pass ViewModel
         )
         binding.recyclerViewRecommendations.apply {
             adapter = recommendationsAdapter
@@ -114,22 +119,21 @@ class BasketFragment : Fragment() {
                         binding.recyclerViewBasket.isVisible = !isBasketEmpty
                         binding.buttonCompletePurchase.isEnabled = !isBasketEmpty
                         binding.purchaseBar.isVisible = !isBasketEmpty
-                        binding.dividerBasket.isVisible = !isBasketEmpty
+                        binding.dividerBasket.isVisible = !isBasketEmpty && binding.recyclerViewRecommendations.isVisible // Show divider only if both sections have content
                         binding.textBasketItemCount.text = getString(R.string.basket_item_count, items.sumOf { it.quantity })
+                        // Consider updating total price here if you were showing it
                     }
                 }
                 launch {
-                    sharedViewModel.recommendations.collect { recommendedProducts ->
-                        // Öneriler bölümü genellikle sadece ürünleri listeler, kategori başlıklarını değil.
-                        // Bu yüzden ProductListItem.ProductItem olarak mapliyoruz.
-                        // Eğer önerilerde de kategori başlıkları olacaksa, SharedViewModel'deki
-                        // recommendations StateFlow'unun ProductListItem döndürmesi gerekir.
+                    // Using basketRecommendations from SharedViewModel
+                    sharedViewModel.basketRecommendations.collect { recommendedProducts ->
                         val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }
                         recommendationsAdapter.submitList(listItems)
                         val hasRecommendations = listItems.isNotEmpty()
-                        binding.textEmptyRecommendations.isVisible = !hasRecommendations
-                        binding.recyclerViewRecommendations.isVisible = hasRecommendations
                         binding.textRecommendationsTitle.isVisible = hasRecommendations
+                        binding.recyclerViewRecommendations.isVisible = hasRecommendations
+                        binding.textEmptyRecommendations.isVisible = !hasRecommendations
+                        binding.dividerBasket.isVisible = !binding.textEmptyBasket.isVisible && hasRecommendations // Update divider based on recommendations too
                     }
                 }
             }

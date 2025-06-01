@@ -49,4 +49,10 @@
     <string name="basket_item_count">Items: %d</string>
     <string name="see_all">Tümünü Gör</string>
     <string name="show_all_categories">Tüm Kategoriler</string>
+    <string name="search_results_title">Results for: %s</string>
+    <string name="all_categories">All</string>
+    <string name="empty_products_message">No products found matching your criteria. Try a different search or category.</string>
+    <string name="recommendations_for_this_product">Similar Items You Might Like</string>
+    <string name="no_detail_recommendations_available">No recommendations available right now.</string>
+    <string name="product_details_title">Product Details</string>
 </resources>
