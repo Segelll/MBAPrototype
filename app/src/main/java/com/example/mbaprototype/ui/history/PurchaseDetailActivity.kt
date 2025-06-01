@@ -1,6 +1,6 @@
 package com.example.mbaprototype.ui.history
 
-import android.icu.text.SimpleDateFormat // Use ICU version
+import android.icu.text.SimpleDateFormat // Use ICU version for more robust date/time formatting
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -33,6 +33,8 @@ class PurchaseDetailActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbarPurchaseDetail)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Title is already set in XML, but can be overridden if needed
+        // supportActionBar?.title = getString(R.string.purchase_details)
 
         val purchaseId = intent.getStringExtra(EXTRA_PURCHASE_ID)
         Log.d("PurchaseDetailActivity", "Received Purchase ID: $purchaseId")
@@ -76,15 +78,19 @@ class PurchaseDetailActivity : AppCompatActivity() {
         binding.recyclerViewPurchaseItems.apply {
             adapter = detailAdapter
             layoutManager = LinearLayoutManager(this@PurchaseDetailActivity)
+            // itemAnimator = DefaultItemAnimator() // Optional: for default animations
         }
     }
 
     private fun populateUI(history: PurchaseHistory) {
-
+        // Using ICU SimpleDateFormat for potentially better locale handling and more pattern options
         val dateFormat = SimpleDateFormat("MMMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
 
         binding.textPurchaseDetailDate.text = getString(R.string.purchase_date_header, dateFormat.format(history.purchaseDate))
-        binding.textPurchaseDetailTotal.text = getString(R.string.purchase_total_cost, getString(R.string.price_format, history.totalCost))
+        // Total cost is no longer displayed
+        // binding.textPurchaseDetailTotal.text = getString(R.string.purchase_total_cost, getString(R.string.price_format, history.totalCost))
+        binding.textPurchaseDetailItemCount.text = getString(R.string.purchase_item_count_details, history.items.sumOf { it.quantity })
+
 
         detailAdapter.submitList(history.items)
         binding.recyclerViewPurchaseItems.isVisible = history.items.isNotEmpty()

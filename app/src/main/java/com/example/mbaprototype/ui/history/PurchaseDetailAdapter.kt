@@ -26,15 +26,17 @@ class PurchaseDetailAdapter : ListAdapter<BasketItem, PurchaseDetailAdapter.Item
         @SuppressLint("SetTextI18n")
         fun bind(item: BasketItem) {
             binding.textPurchaseItemName.text = item.product.name
-            binding.textPurchaseItemPricePerUnit.text = String.format(
-                itemView.context.getString(R.string.basket_item_price_format),
-                item.product.price
-            ) + " each"
-            binding.textPurchaseItemQuantity.text = "x ${item.quantity}"
-            binding.textPurchaseItemLineTotal.text = String.format(
-                itemView.context.getString(R.string.price_format),
-                item.product.price * item.quantity
-            )
+            // Price per unit is no longer displayed
+            // binding.textPurchaseItemPricePerUnit.text = String.format(
+            //     itemView.context.getString(R.string.basket_item_price_format), // Re-use for format consistency if needed
+            //     item.product.price
+            // ) + " each"
+            binding.textPurchaseItemQuantity.text = itemView.context.getString(R.string.quantity_prefix_details, item.quantity)
+            // Line total is no longer displayed
+            // binding.textPurchaseItemLineTotal.text = String.format(
+            //     itemView.context.getString(R.string.price_format),
+            //     item.product.price * item.quantity
+            // )
         }
 
         companion object {
@@ -48,6 +50,7 @@ class PurchaseDetailAdapter : ListAdapter<BasketItem, PurchaseDetailAdapter.Item
 
     class DiffCallback : DiffUtil.ItemCallback<BasketItem>() {
         override fun areItemsTheSame(oldItem: BasketItem, newItem: BasketItem): Boolean {
+            // Assuming product.id is unique and stable
             return oldItem.product.id == newItem.product.id
         }
 

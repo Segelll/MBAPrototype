@@ -20,7 +20,7 @@ import java.util.Date
 import java.util.UUID
 
 sealed interface ProductListItem {
-    data class CategoryHeader(val category: Category) : ProductListItem
+    data class CategoryHeader(val category: Category, val isShowingAll: Boolean = false) : ProductListItem
     data class ProductItem(val product: Product) : ProductListItem
 }
 
@@ -29,32 +29,61 @@ class SharedViewModel : ViewModel() {
 
     private val _allProducts = MutableStateFlow<List<Product>>(emptyList())
     private val _allCategories = MutableStateFlow<List<Category>>(emptyList())
-    private val _filteredProductFlow = MutableStateFlow<String?>(null)
+    val allCategories: StateFlow<List<Category>> = _allCategories.asStateFlow()
 
-    val categorizedProductList: StateFlow<List<ProductListItem>> = _filteredProductFlow.map { query ->
-        val productsToCategorize = if (query.isNullOrBlank()) {
-            _allProducts.value
+    private val _searchQuery = MutableStateFlow<String?>(null)
+    val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
+
+
+    val categorizedProductList: StateFlow<List<ProductListItem>> = _searchQuery.map { query ->
+        val productsToDisplay: List<Product>
+        val categoriesToConsider: List<Category>
+        val isDetailCategoryView = !query.isNullOrBlank()
+
+        if (isDetailCategoryView) {
+            productsToDisplay = _allProducts.value.filter { product ->
+                product.name.contains(query!!, ignoreCase = true) ||
+                        _allCategories.value.find { it.id == product.categoryId }?.name?.contains(query, ignoreCase = true) == true
+            }
+            val distinctCategoryIds = productsToDisplay.map { it.categoryId }.distinct()
+            categoriesToConsider = _allCategories.value.filter { distinctCategoryIds.contains(it.id) }
+
         } else {
-            _allProducts.value.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                        DataSource.getCategoryById(it.categoryId)?.name?.contains(query, ignoreCase = true) == true
+            productsToDisplay = _allProducts.value
+            categoriesToConsider = _allCategories.value
+        }
+
+        categoriesToConsider.flatMap { category ->
+            val productsInCategory = productsToDisplay.filter { it.categoryId == category.id }
+            if (productsInCategory.isNotEmpty()) {
+                val header = ProductListItem.CategoryHeader(category, isDetailCategoryView || productsInCategory.size <= 3)
+                val itemsToShow = if (isDetailCategoryView) {
+                    productsInCategory.map { ProductListItem.ProductItem(it) }
+                } else {
+                    productsInCategory.take(3).map { ProductListItem.ProductItem(it) }
+                }
+                listOf(header) + itemsToShow
+            } else {
+                emptyList()
             }
         }
-        productsToCategorize.groupBy { product ->
-            _allCategories.value.find { it.id == product.categoryId }
-        }.filterKeys { it != null }
-            .flatMap { (category, productList) ->
-                listOf(ProductListItem.CategoryHeader(category!!)) + productList.map { ProductListItem.ProductItem(it) }
-            }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = emptyList()
+    )
 
 
     private val _basketItems = MutableStateFlow<List<BasketItem>>(emptyList())
     val basketItems: StateFlow<List<BasketItem>> = _basketItems.asStateFlow()
 
-    val basketTotalCost: StateFlow<Double> = _basketItems.map { items ->
-        items.sumOf { it.product.price * it.quantity }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    val basketTotalCost: StateFlow<Double> = _basketItems.map {
+        0.0
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = 0.0
+    )
 
 
     private val _favoriteProducts = MutableStateFlow<Set<String>>(emptySet())
@@ -79,7 +108,8 @@ class SharedViewModel : ViewModel() {
             _allProducts.value = DataSource.products
             _allCategories.value = DataSource.categories
             _pastPurchases.value = DataSource.pastPurchases
-            _filteredProductFlow.value = null
+            _searchQuery.value = null
+            updateRecommendations()
         }
     }
 
@@ -149,24 +179,32 @@ class SharedViewModel : ViewModel() {
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
             _clickedProductIds.update { currentClicks ->
+                // Önce Set'i List'e dönüştür, sonra takeLast uygula, sonra tekrar Set'e dönüştür.
                 (currentClicks + productId).toList().takeLast(20).toSet()
             }
         }
     }
 
-    fun searchProducts(query: String) {
-        _filteredProductFlow.value = query
+    fun searchProductsOrCategory(query: String?) {
+        _searchQuery.value = query
     }
+
+    fun clearSearchOrFilter() {
+        _searchQuery.value = null
+    }
+
 
     private fun updateRecommendations() {
         viewModelScope.launch {
-            val basketIds = _basketItems.value.map { it.product.id }.toSet()
-            val allProds = DataSource.products
-            val potentialRecs = allProds.filterNot { product ->
-                basketIds.contains(product.id)
+            val basketProductIds = _basketItems.value.map { it.product.id }.toSet()
+            if (_allProducts.value.isEmpty()) {
+                _recommendations.value = emptyList()
+                return@launch
             }
-            val mockRecs = potentialRecs.take(3)
-            _recommendations.value = mockRecs
+            val potentialRecs = _allProducts.value.filterNot { product ->
+                basketProductIds.contains(product.id) || _favoriteProducts.value.contains(product.id)
+            }
+            _recommendations.value = potentialRecs.shuffled().take(3)
         }
     }
 
@@ -176,12 +214,14 @@ class SharedViewModel : ViewModel() {
             return false
         }
         viewModelScope.launch {
-            val historyRecord = PurchaseHistory(
+            val newPurchase = PurchaseHistory(
                 purchaseId = UUID.randomUUID().toString(),
                 purchaseDate = Date(),
-                items = currentBasket
+                items = ArrayList(currentBasket)
             )
-            _pastPurchases.update { currentHistory -> listOf(historyRecord) + currentHistory }
+            _pastPurchases.update { currentHistory ->
+                listOf(newPurchase) + currentHistory
+            }
             _basketItems.value = emptyList()
             updateRecommendations()
         }
@@ -189,18 +229,18 @@ class SharedViewModel : ViewModel() {
     }
 
     fun getProductById(productId: String): Product? {
-        return DataSource.products.find { it.id == productId }
+        if (_allProducts.value.isEmpty()) {
+            Log.w("SharedViewModel", "getProductById called before products were loaded.")
+            return null
+        }
+        return _allProducts.value.find { it.id == productId }
     }
 
     fun getPurchaseById(id: String): PurchaseHistory? {
-        Log.d("SharedViewModel", "Searching for Purchase ID: $id")
-        Log.d("SharedViewModel", "Current _pastPurchases size: ${_pastPurchases.value.size}")
-        _pastPurchases.value.forEachIndexed { index, history ->
-            Log.d("SharedViewModel", "History[$index] ID: ${history.purchaseId}")
+        if (_pastPurchases.value.isEmpty() && DataSource.pastPurchases.any { it.purchaseId == id }) {
+            Log.w("SharedViewModel", "getPurchaseById called for an ID that might be in DataSource but not yet in StateFlow.")
         }
-        val found = _pastPurchases.value.find { it.purchaseId == id }
-        Log.d("SharedViewModel", "Find result for ID $id: ${if (found != null) "FOUND" else "NOT FOUND"}")
-        return found
+        return _pastPurchases.value.find { it.purchaseId == id }
     }
 
     fun isFavorite(productId: String): Boolean {

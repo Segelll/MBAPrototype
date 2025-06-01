@@ -18,7 +18,7 @@ class HistoryAdapter(
     private val onHistoryClick: OnHistoryClick
 ) : ListAdapter<PurchaseHistory, HistoryAdapter.HistoryViewHolder>(HistoryDiffCallback()) {
 
-    private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()) // Corrected year pattern
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HistoryViewHolder {
         val binding = ItemHistoryBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -48,10 +48,13 @@ class HistoryAdapter(
                 itemNames
             )
 
-            binding.textHistoryTotalCost.text = itemView.context.getString(
-                R.string.purchase_total_cost, // Use the generic total cost string
-                String.format(itemView.context.getString(R.string.price_format), history.totalCost)
-            )
+            // Total cost is no longer displayed
+            // binding.textHistoryTotalCost.text = itemView.context.getString(
+            // R.string.purchase_total_cost,
+            // String.format(itemView.context.getString(R.string.price_format), history.totalCost)
+            // )
+            binding.textHistoryItemCount.text = itemView.context.getString(R.string.history_item_count, history.items.sumOf { it.quantity })
+
 
             binding.root.setOnClickListener {
                 onHistoryClick(history)

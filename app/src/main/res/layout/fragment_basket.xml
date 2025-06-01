@@ -112,7 +112,7 @@
             android:padding="16dp">
 
             <TextView
-                android:id="@+id/text_basket_total"
+                android:id="@+id/text_basket_item_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
@@ -120,7 +120,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
-                tools:text="Total: $99.99"/>
+                tools:text="Items: 0"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_complete_purchase"

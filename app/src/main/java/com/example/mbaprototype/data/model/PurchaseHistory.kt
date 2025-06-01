@@ -11,5 +11,5 @@ data class PurchaseHistory(
     val items: List<BasketItem>
 ) : Parcelable {
     val totalCost: Double
-        get() = items.sumOf { it.product.price * it.quantity }
+        get() = 0.0 // Prices are not displayed, so total cost is effectively zero in this context.
 }

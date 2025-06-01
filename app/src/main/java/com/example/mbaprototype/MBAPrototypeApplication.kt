@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import com.example.mbaprototype.data.DataSource // DataSource'u import et
 import com.example.mbaprototype.ui.SharedViewModel
 
 
@@ -23,6 +24,12 @@ class MBAPrototypeApplication : Application(), ViewModelStoreOwner {
             this,
             ViewModelProvider.AndroidViewModelFactory.getInstance(this)
         )[SharedViewModel::class.java]
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // DataSource'u uygulama başlarken initialize et
+        DataSource.init(applicationContext)
     }
 
 }

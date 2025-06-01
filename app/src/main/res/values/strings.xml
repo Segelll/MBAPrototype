@@ -15,7 +15,6 @@
     <string name="ingredient_information_not_available">Ingredient information not available.</string>
     <string name="category_prefix">Category: %s</string>
     <string name="unknown_category">Unknown Category</string>
-    <string name="price_format">$%.2f</string>
     <string name="error_product_not_found">Error: Product details could not be loaded.</string>
     <string name="search_products_hint">Search products or categories...</string>
     <string name="product_details">Product Details</string>
@@ -28,24 +27,26 @@
     <string name="purchase_history">Purchase History</string>
     <string name="history_date_prefix">Date: %s</string>
     <string name="history_items_prefix">Items: %s</string>
+    <string name="history_item_count">Items: %d</string>
     <string name="no_favorite_products_yet">No favorite products yet.</string>
     <string name="no_purchase_history_yet">No purchase history yet.</string>
     <string name="purchase_details">Purchase Details</string>
-    <string name="purchase_total_cost">Total: %s</string>
     <string name="purchase_date_header">Purchased on: %s</string>
     <string name="error_purchase_not_found">Error: Purchase details could not be loaded.</string>
+    <string name="purchase_item_count_details">Total Items: %d</string>
 
 
     <string name="current_basket">Current Basket</string>
     <string name="remove_from_basket">Remove from Basket</string>
     <string name="recommendations_for_you">Recommendations For You</string>
-    <string name="basket_item_format">%s (x%d)</string>
-    <string name="basket_item_price_format">$%.2f</string>
+    <string name="quantity_prefix_basket">Quantity: %d</string>
+    <string name="quantity_prefix_details">x %d</string>
     <string name="your_basket_is_empty">Your basket is empty.</string>
     <string name="no_recommendations_available_yet">No recommendations available yet.</string>
     <string name="complete_purchase">Complete Purchase</string>
     <string name="purchase_successful">Purchase Successful!</string>
     <string name="basket_empty_cannot_purchase">Basket is empty</string>
-    <string name="basket_total">Basket Total: %s</string>
-
+    <string name="basket_item_count">Items: %d</string>
+    <string name="see_all">Tümünü Gör</string>
+    <string name="show_all_categories">Tüm Kategoriler</string>
 </resources>

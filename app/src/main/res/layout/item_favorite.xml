@@ -32,12 +32,9 @@
 
         <ImageButton
             android:id="@+id/button_remove_favorite"
-            style="?attr/materialIconButtonStyle"
-            android:layout_width="48dp"
+            style="?attr/materialIconButtonStyle" android:layout_width="48dp"
             android:layout_height="48dp"
-            app:srcCompat="@drawable/ic_favorite_filled"
-            app:tint="?attr/colorPrimary"
-            android:contentDescription="@string/remove_from_favorites"
+            android:background="?attr/selectableItemBackgroundBorderless" app:srcCompat="@drawable/ic_favorite_filled" app:tint="?attr/colorPrimary" android:contentDescription="@string/remove_from_favorites"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"/>

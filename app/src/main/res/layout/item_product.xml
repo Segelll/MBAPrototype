@@ -12,7 +12,8 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:minHeight="100dp">
 
         <ImageView
             android:id="@+id/image_product"
@@ -33,25 +34,14 @@
             android:layout_marginStart="16dp"
             android:layout_marginEnd="8dp"
             android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
             app:layout_constraintStart_toEndOf="@id/image_product"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/button_add_to_basket"
-            tools:text="Product Name Very Long To Test Wrapping" />
-
-        <TextView
-            android:id="@+id/text_product_price"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-            android:textStyle="bold"
-            android:textColor="?attr/colorPrimary"
-            app:layout_constraintStart_toStartOf="@id/text_product_name"
-            app:layout_constraintTop_toBottomOf="@id/text_product_name"
             app:layout_constraintBottom_toBottomOf="parent"
-            tools:text="$0.00" />
+            app:layout_constraintEnd_toStartOf="@+id/button_add_to_basket"
+            app:layout_constraintVertical_bias="0.0"
+            tools:text="Product Name Very Long To Test Wrapping And To Ensure It Stays Within Bounds" />
 
         <ImageButton
             android:id="@+id/button_add_to_basket"
@@ -64,8 +54,8 @@
             app:tint="?attr/colorPrimary"
             android:contentDescription="@string/add_to_basket"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="@id/text_product_price"
-            app:layout_constraintTop_toTopOf="@id/text_product_price"/>
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

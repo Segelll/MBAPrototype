@@ -19,7 +19,8 @@
             android:layout_width="match_parent"
             android:layout_height="280dp"
             app:contentScrim="?attr/colorPrimary"
-            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap">
+            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap"
+            app:titleEnabled="true">
 
             <ImageView
                 android:id="@+id/image_detail_product"
@@ -38,9 +39,7 @@
                 android:layout_height="?attr/actionBarSize"
                 app:layout_collapseMode="pin"
                 app:navigationIcon="@drawable/ic_arrow_back"
-                app:title="" />
-
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
+                app:title="" /> </com.google.android.material.appbar.CollapsingToolbarLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -63,20 +62,10 @@
                 tools:text="Product Name Long Enough To Wrap" />
 
             <TextView
-                android:id="@+id/text_detail_product_price"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
-                android:textColor="?attr/colorPrimary"
-                tools:text="$0.00" />
-
-            <TextView
                 android:id="@+id/text_detail_category"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+                android:layout_marginTop="8dp" android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
                 android:textColor="?attr/colorSecondary"
                 tools:text="Category: Category Name" />
 
@@ -121,18 +110,15 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingBottom="80dp">
-
-                <TextView
-                    android:id="@+id/label_add_to_actions"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
-                    android:text="@string/add_to_basket"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toStartOf="@id/quantity_selector_group"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:layout_marginEnd="16dp"/>
+                android:paddingBottom="80dp"> <TextView
+                android:id="@+id/label_add_to_actions"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+                android:text="@string/add_to_basket" app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/quantity_selector_group"
+                app:layout_constraintTop_toTopOf="parent"
+                android:layout_marginEnd="16dp"/>
 
                 <ImageButton
                     android:id="@+id/button_detail_toggle_favorite"
@@ -141,9 +127,10 @@
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
                     android:contentDescription="@string/add_to_favorites"
-                    app:srcCompat="@drawable/ic_favorite_border"
-                    app:tint="?attr/colorSecondary"
-                    app:layout_constraintStart_toStartOf="parent"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:srcCompat="@drawable/sl_favorite" app:tint="@color/sl_favorite_tint"     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/label_add_to_actions"/>
 
                 <LinearLayout
@@ -152,11 +139,8 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:visibility="gone"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    tools:visibility="visible">
+                    android:visibility="gone" app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/label_add_to_actions" app:layout_constraintBottom_toBottomOf="@id/button_detail_toggle_favorite" tools:visibility="visible">
 
                     <ImageButton
                         android:id="@+id/button_quantity_decrease"
@@ -208,8 +192,7 @@
                     android:text="@string/add_to_basket"
                     app:icon="@drawable/ic_add_shopping_cart"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"/>
+                    app:layout_constraintTop_toTopOf="@id/label_add_to_actions" app:layout_constraintBottom_toBottomOf="@id/button_detail_toggle_favorite"/>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 

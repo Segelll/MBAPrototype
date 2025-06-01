@@ -29,16 +29,16 @@
             tools:text="Basket Item Name" />
 
         <TextView
-            android:id="@+id/text_basket_item_price"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
-            android:textColor="?attr/colorSecondary"
-            app:layout_constraintStart_toStartOf="@id/text_basket_item_name"
-            app:layout_constraintTop_toBottomOf="@id/text_basket_item_name"
-            app:layout_constraintBottom_toBottomOf="parent"
-            tools:text="$0.00 x 1" />
+            android:id="@+id/text_basket_item_quantity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+        android:textColor="?attr/colorSecondary"
+        app:layout_constraintStart_toStartOf="@id/text_basket_item_name"
+        app:layout_constraintTop_toBottomOf="@id/text_basket_item_name"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:text="Quantity: 1" />
 
         <ImageButton
             android:id="@+id/button_remove_from_basket"

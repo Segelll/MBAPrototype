@@ -39,14 +39,14 @@
             tools:text="Items: Product A, Product B, Product C, Product D, Product E" />
 
         <TextView
-            android:id="@+id/text_history_total_cost"
+            android:id="@+id/text_history_item_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
             android:layout_marginTop="8dp"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
             android:textStyle="bold"
-            tools:text="Total: $15.75"/>
+            tools:text="Items: 5"/>
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

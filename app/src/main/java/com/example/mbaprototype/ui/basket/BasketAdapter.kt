@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.mbaprototype.R
+import com.example.mbaprototype.R // R importu eksikse ekleyin
 import com.example.mbaprototype.data.model.BasketItem
 import com.example.mbaprototype.databinding.ItemBasketBinding
 
@@ -33,11 +33,9 @@ class BasketAdapter(
         @SuppressLint("SetTextI18n")
         fun bind(basketItem: BasketItem) {
             binding.textBasketItemName.text = basketItem.product.name
-            binding.textBasketItemPrice.text = String.format(
-                itemView.context.getString(R.string.basket_item_format),
-                String.format(itemView.context.getString(R.string.basket_item_price_format), basketItem.product.price),
-                basketItem.quantity
-            )
+            // Fiyat artık gösterilmiyor. İkinci satırda miktarı göster.
+            binding.textBasketItemQuantity.text = itemView.context.getString(R.string.quantity_prefix_basket, basketItem.quantity)
+
 
             binding.buttonRemoveFromBasket.setOnClickListener {
                 onRemoveClick(basketItem.product.id)

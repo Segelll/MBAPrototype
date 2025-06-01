@@ -11,7 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.mbaprototype.MBAPrototypeApplication // Added
+import com.example.mbaprototype.MBAPrototypeApplication
 import com.example.mbaprototype.R
 import com.example.mbaprototype.databinding.FragmentBasketBinding
 import com.example.mbaprototype.ui.ProductListItem
@@ -70,6 +70,15 @@ class BasketFragment : Fragment() {
                 Snackbar.make(binding.root, "${product.name} ${getString(R.string.added_updated_in_basket)}", Snackbar.LENGTH_SHORT)
                     .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
                     .show()
+            },
+            onCategoryHeaderClick = { category ->
+                // BasketFragment'taki recommendationsAdapter için kategori başlığı tıklaması
+                // genellikle burada anlamlı bir eylem gerektirmez çünkü kategori başlıkları
+                // bu bölümde gösterilmiyor olabilir.
+                // İsterseniz buraya ProductsFragment'taki gibi bir filtreleme mantığı ekleyebilirsiniz
+                // ya da şimdilik boş bırakabilirsiniz.
+                // Örneğin: sharedViewModel.searchProductsOrCategory(category.name)
+                // activity?.findViewById<BottomNavigationView>(R.id.bottom_navigation_view)?.selectedItemId = R.id.navigation_products
             }
         )
         binding.recyclerViewRecommendations.apply {
@@ -84,11 +93,11 @@ class BasketFragment : Fragment() {
             val success = sharedViewModel.completePurchase()
             if (success) {
                 Snackbar.make(binding.root, R.string.purchase_successful, Snackbar.LENGTH_LONG)
-                    .setAnchorView(R.id.bottom_navigation_view)
+                    .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
                     .show()
             } else {
                 Snackbar.make(binding.root, R.string.basket_empty_cannot_purchase, Snackbar.LENGTH_SHORT)
-                    .setAnchorView(R.id.bottom_navigation_view)
+                    .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
                     .show()
             }
         }
@@ -106,15 +115,15 @@ class BasketFragment : Fragment() {
                         binding.buttonCompletePurchase.isEnabled = !isBasketEmpty
                         binding.purchaseBar.isVisible = !isBasketEmpty
                         binding.dividerBasket.isVisible = !isBasketEmpty
-                    }
-                }
-                launch {
-                    sharedViewModel.basketTotalCost.collect { total ->
-                        binding.textBasketTotal.text = getString(R.string.basket_total, getString(R.string.price_format, total))
+                        binding.textBasketItemCount.text = getString(R.string.basket_item_count, items.sumOf { it.quantity })
                     }
                 }
                 launch {
                     sharedViewModel.recommendations.collect { recommendedProducts ->
+                        // Öneriler bölümü genellikle sadece ürünleri listeler, kategori başlıklarını değil.
+                        // Bu yüzden ProductListItem.ProductItem olarak mapliyoruz.
+                        // Eğer önerilerde de kategori başlıkları olacaksa, SharedViewModel'deki
+                        // recommendations StateFlow'unun ProductListItem döndürmesi gerekir.
                         val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }
                         recommendationsAdapter.submitList(listItems)
                         val hasRecommendations = listItems.isNotEmpty()
