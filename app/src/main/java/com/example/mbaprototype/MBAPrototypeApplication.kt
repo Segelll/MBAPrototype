@@ -1,35 +1,19 @@
 package com.example.mbaprototype
 
 import android.app.Application
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import com.example.mbaprototype.data.DataSource // DataSource'u import et
+import com.example.mbaprototype.data.DataSource
 import com.example.mbaprototype.ui.SharedViewModel
+import com.example.mbaprototype.utils.InteractionLogger // Import InteractionLogger
 
-
-class MBAPrototypeApplication : Application(), ViewModelStoreOwner {
-
-
-    private val appViewModelStore: ViewModelStore by lazy {
-        ViewModelStore()
-    }
-
-    override val viewModelStore: ViewModelStore
-        get() = appViewModelStore
-
+class MBAPrototypeApplication : Application() {
 
     val sharedViewModel: SharedViewModel by lazy {
-        ViewModelProvider(
-            this,
-            ViewModelProvider.AndroidViewModelFactory.getInstance(this)
-        )[SharedViewModel::class.java]
+        SharedViewModel(this) // Pass application context to ViewModel
     }
 
     override fun onCreate() {
         super.onCreate()
-        // DataSource'u uygulama başlarken initialize et
-        DataSource.init(applicationContext)
+        DataSource.init(this)
+        InteractionLogger.initialize(this) // Initialize the logger
     }
-
 }
