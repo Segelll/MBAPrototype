@@ -16,8 +16,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:theme="@style/Theme.MBAPrototype.NoActionBar"
             android:exported="true"
+            android:theme="@style/Theme.MBAPrototype"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,19 +27,25 @@
 
         <activity
             android:name=".ui.products.ProductDetailActivity"
-            android:theme="@style/Theme.MBAPrototype.NoActionBar"
             android:exported="false"
             android:label="@string/product_details"
             android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.MBAPrototype"
             android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
         </activity>
 
         <activity
             android:name=".ui.history.PurchaseDetailActivity"
-            android:theme="@style/Theme.MBAPrototype.NoActionBar"
             android:exported="false"
             android:label="@string/purchase_details"
-            android:parentActivityName=".MainActivity">
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.MBAPrototype">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".MainActivity" />
         </activity>
 
     </application>
