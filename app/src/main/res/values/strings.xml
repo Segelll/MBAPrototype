@@ -64,4 +64,5 @@
     <string name="error_purchase_id_missing">Purchase ID is missing.</string>
     <string name="purchase_date_prefix">Date: %s</string>
     <string name="purchased_items">Purchased Items</string>
+    <string name="for_you">For You</string>
 </resources>
