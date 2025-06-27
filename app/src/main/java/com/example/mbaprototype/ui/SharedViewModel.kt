@@ -96,7 +96,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _basketItems = MutableStateFlow<List<BasketItem>>(emptyList())
     val basketItems: StateFlow<List<BasketItem>> = _basketItems.asStateFlow()
 
-    // basketTotalCost remains as is, as price is not used.
     val basketTotalCost: StateFlow<Double> = _basketItems.map { 0.0 }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
@@ -107,7 +106,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _pastPurchases = MutableStateFlow<List<PurchaseHistory>>(emptyList())
     val pastPurchases: StateFlow<List<PurchaseHistory>> = _pastPurchases.asStateFlow()
 
-    private val _clickedProductIds = MutableStateFlow<Set<String>>(emptySet()) // Not directly logged via logger, but good for internal tracking
+    private val _clickedProductIds = MutableStateFlow<Set<String>>(emptySet())
     val clickedProductIds: StateFlow<Set<String>> = _clickedProductIds.asStateFlow()
 
     private val _productDetailRecommendations = MutableStateFlow<List<Product>>(emptyList())
@@ -119,7 +118,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadInitialData()
-        // InteractionLogger is initialized in Application class now.
     }
 
     private fun loadInitialData() {
@@ -200,7 +198,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleFavorite(productId: String) {
         viewModelScope.launch {
-            val app = getApplication<Application>() // Get application context
             val isCurrentlyFavorite = _favoriteProducts.value.contains(productId)
             _favoriteProducts.update { currentFavorites ->
                 if (isCurrentlyFavorite) {
@@ -209,20 +206,21 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     currentFavorites + productId
                 }
             }
-            // Log interaction
-            val interactionType = if (isCurrentlyFavorite) {
-                InteractionLogger.InteractionType.REMOVE_FAVORITE
-            } else {
-                InteractionLogger.InteractionType.ADD_FAVORITE
+            // Log interaction only when adding a favorite
+            if (!isCurrentlyFavorite) {
+                getProductById(productId)?.let { product ->
+                    InteractionLogger.logInteraction(product, "favorites")
+                }
             }
-            InteractionLogger.logInteraction(app, interactionType, productId)
         }
     }
 
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
-            val app = getApplication<Application>() // Get application context
-            InteractionLogger.logInteraction(app, InteractionLogger.InteractionType.PRODUCT_CLICK, productId)
+            // Log interaction
+            getProductById(productId)?.let { product ->
+                InteractionLogger.logInteraction(product, "click")
+            }
 
             // Existing logic for recommendations and clicked IDs
             val clickedProduct = _allProducts.value.find { it.id == productId }
@@ -236,43 +234,32 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun searchProductsOrFilterByCategory(queryOrCategoryName: String?) {
-        val app = getApplication<Application>() // Get application context
         val category = _allCategories.value.find { it.name.equals(queryOrCategoryName, ignoreCase = true) }
 
         if (category != null) {
             _searchQuery.value = category.id
             _selectedCategoryIdFromTab.value = category.id
-            // Log category filter as a type of search
-            InteractionLogger.logInteraction(app, InteractionLogger.InteractionType.SEARCH, "category_filter:${category.name}")
+            // InteractionLogger for search has been removed as it's not in the new API spec.
         } else {
             _searchQuery.value = queryOrCategoryName
             if (queryOrCategoryName.isNullOrBlank()){
                 _selectedCategoryIdFromTab.value = null
-            } else {
-                // Log search query
-                InteractionLogger.logInteraction(app, InteractionLogger.InteractionType.SEARCH, queryOrCategoryName)
             }
+            // InteractionLogger for search has been removed.
         }
     }
 
     fun filterByCategoryFromTab(categoryId: String?) {
-        val app = getApplication<Application>()
         _selectedCategoryIdFromTab.value = categoryId
         _searchQuery.value = categoryId
         if (categoryId == null) {
-            clearSearchOrFilter() // This will log "search_cleared" or similar if you add it
+            clearSearchOrFilter()
         } else {
-            val category = _allCategories.value.find { it.id == categoryId }
-            category?.let {
-                InteractionLogger.logInteraction(app, InteractionLogger.InteractionType.SEARCH, "category_tab:${it.name}")
-            }
+            // InteractionLogger for search has been removed.
         }
     }
 
     fun clearSearchOrFilter() {
-        // Optionally log when search/filter is cleared
-        // val app = getApplication<Application>()
-        // InteractionLogger.logInteraction(app, InteractionLogger.InteractionType.SEARCH, "search_cleared")
         _searchQuery.value = null
         _selectedCategoryIdFromTab.value = null
     }
@@ -314,10 +301,9 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         if (currentBasket.isEmpty()) {
             return false
         }
-        val app = getApplication<Application>() // Get application context
         viewModelScope.launch {
             val newPurchase = PurchaseHistory(
-                purchaseId = UUID.randomUUID().toString(), // This ID could also be logged if needed elsewhere
+                purchaseId = UUID.randomUUID().toString(),
                 purchaseDate = Date(),
                 items = ArrayList(currentBasket)
             )
@@ -325,12 +311,11 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 listOf(newPurchase) + currentHistory
             }
 
-            // Log each purchased item
+            // Log each purchased item with the "bought" interaction type
             currentBasket.forEach { basketItem ->
                 InteractionLogger.logInteraction(
-                    app,
-                    InteractionLogger.InteractionType.PURCHASED_ITEM,
-                    "${basketItem.product.id}|qty:${basketItem.quantity}" // Storing product ID and quantity
+                    basketItem.product,
+                    "bought"
                 )
             }
 
@@ -340,7 +325,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         return true
     }
 
-    // Helper methods remain the same
+    // Helper methods
     fun getProductById(productId: String): Product? {
         if (_allProducts.value.isEmpty()) {
             Log.w("SharedViewModel", "getProductById called before products were loaded.")

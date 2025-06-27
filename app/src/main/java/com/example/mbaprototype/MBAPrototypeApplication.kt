@@ -14,6 +14,6 @@ class MBAPrototypeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DataSource.init(this)
-        InteractionLogger.initialize(this) // Initialize the logger
+
     }
 }

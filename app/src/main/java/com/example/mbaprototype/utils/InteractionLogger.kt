@@ -1,96 +1,42 @@
 package com.example.mbaprototype.utils
 
-import android.content.Context
 import android.util.Log
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.OutputStreamWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
+import com.example.mbaprototype.data.model.Product
+import com.example.mbaprototype.data.network.InteractionRequest
+import com.example.mbaprototype.data.network.RetrofitClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object InteractionLogger {
 
-    private const val FILE_NAME = "etkilesim.csv"
-    private const val CSV_HEADER = "userno,etkileşim türü,ürünid,tarih\n"
+    private const val TAG = "InteractionLogger"
 
-    // For simplicity, generate a unique ID per app installation if not available.
-    // In a real app with user accounts, you'd use the actual user ID.
-    private var userNo: String? = null
-    private const val PREF_USER_NO = "pref_user_no"
-    private const val KEY_USER_NO = "key_app_user_no"
-
-
-    fun initialize(context: Context) {
-        if (userNo == null) {
-            val sharedPreferences = context.getSharedPreferences(PREF_USER_NO, Context.MODE_PRIVATE)
-            var storedUserNo = sharedPreferences.getString(KEY_USER_NO, null)
-            if (storedUserNo == null) {
-                storedUserNo = UUID.randomUUID().toString()
-                sharedPreferences.edit().putString(KEY_USER_NO, storedUserNo).apply()
-            }
-            userNo = storedUserNo
+    fun logInteraction(product: Product, interactionType: String) {
+        // Geçerli olmayan 'unfavorite' gibi etkileşimleri göndermeyi engelle
+        val validInteractionTypes = listOf("favorites", "bought", "scan", "click")
+        if (!validInteractionTypes.contains(interactionType)) {
+            Log.w(TAG, "Geçersiz etkileşim türü gönderilmedi: $interactionType")
+            return
         }
-        ensureHeader(context)
-    }
 
-
-    private fun ensureHeader(context: Context) {
-        val file = File(context.filesDir, FILE_NAME)
-        if (!file.exists()) {
+        // Ağ isteğini ana iş parçacığı dışında bir Coroutine içinde yap
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                file.outputStream().use { fos ->
-                    OutputStreamWriter(fos).use { writer ->
-                        writer.append(CSV_HEADER)
-                    }
+                val request = InteractionRequest(
+                    product_no = product.id,
+                    interaction_type = interactionType
+                )
+                val response = RetrofitClient.instance.postInteraction(request)
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Etkileşim başarıyla kaydedildi: ${response.body()}")
+                } else {
+                    Log.e(TAG, "Etkileşim kaydedilemedi: ${response.errorBody()?.string()}")
                 }
-            } catch (e: IOException) {
-                Log.e("InteractionLogger", "Error writing CSV header", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Etkileşim kaydı sırasında istisna oluştu", e)
             }
         }
-    }
-
-    fun logInteraction(
-        context: Context,
-        interactionType: String,
-        productId: String? // Can be product ID, search query, or other relevant ID
-    ) {
-        if (userNo == null) {
-            Log.e("InteractionLogger", "UserNo not initialized. Call initialize() first.")
-            // Attempt to initialize again as a fallback, though it should be done on app start
-            initialize(context.applicationContext)
-            if (userNo == null) return // Still null, cannot log
-        }
-
-        val file = File(context.filesDir, FILE_NAME)
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.getDefault())
-        val timestamp = dateFormat.format(Date())
-
-        // Sanitize CSV data: remove commas and newlines from productId if it's a search query
-        val sanitizedProductId = productId?.replace(",", "")?.replace("\n", " ") ?: ""
-
-        val csvRow = "$userNo,$interactionType,$sanitizedProductId,$timestamp\n"
-
-        try {
-            // Append mode
-            FileOutputStream(file, true).use { fos ->
-                OutputStreamWriter(fos).use { writer ->
-                    writer.append(csvRow)
-                }
-            }
-        } catch (e: IOException) {
-            Log.e("InteractionLogger", "Error writing to CSV", e)
-        }
-    }
-
-    // Interaction type constants
-    object InteractionType {
-        const val PRODUCT_CLICK = "product_click"
-        const val ADD_FAVORITE = "add_favorite"
-        const val REMOVE_FAVORITE = "remove_favorite"
-        const val SEARCH = "search"
-        const val PURCHASED_ITEM = "purchased_item" // For logging items from a completed basket
     }
 }
