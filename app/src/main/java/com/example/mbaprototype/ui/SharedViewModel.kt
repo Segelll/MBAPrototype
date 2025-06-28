@@ -132,7 +132,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // DEĞİŞİKLİK: Bu fonksiyon artık "collaborative" endpoint'ini çağırıyor.
     fun updateForYouRecommendations() {
         viewModelScope.launch {
             try {
@@ -207,7 +206,8 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     updateBasketRecommendations()
                     updateForYouRecommendations()
-                    updateProductDetailRecommendations(product.categoryId, product.id)
+                    // DEĞİŞİKLİK: Ürün detayı önerilerini güncellemek için yeni imza kullanıldı.
+                    updateProductDetailRecommendations(product.id)
                 }
             } catch (e: Exception) {
                 Log.e("SharedViewModel", "Failed to add product to basket", e)
@@ -292,7 +292,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         return true
     }
 
-    // DEĞİŞİKLİK: Bu fonksiyon artık "basket-similarity" endpoint'ini çağırıyor.
     private fun updateBasketRecommendations() {
         viewModelScope.launch {
             try {
@@ -341,10 +340,9 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             getProductById(productId)?.let { product ->
                 InteractionLogger.logInteraction(product, "click")
             }
-            val clickedProduct = _allProducts.value.find { it.id == productId }
-            clickedProduct?.let {
-                updateProductDetailRecommendations(it.categoryId, it.id)
-            }
+            // DEĞİŞİKLİK: Ürün detayı önerilerini güncellemek için yeni imza kullanıldı.
+            updateProductDetailRecommendations(productId)
+
             _clickedProductIds.update { currentClicks ->
                 (currentClicks + productId).toList().takeLast(20).toSet()
             }
@@ -377,20 +375,33 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         _selectedCategoryIdFromTab.value = null
     }
 
-    fun updateProductDetailRecommendations(categoryId: String?, currentProductId: String?) {
+    // DEĞİŞİKLİK: Fonksiyon, artık content-based API'ı çağıracak şekilde yeniden yazıldı.
+    fun updateProductDetailRecommendations(productId: String?) {
+        if (productId == null) {
+            _productDetailRecommendations.value = emptyList()
+            return
+        }
         viewModelScope.launch {
-            if (_allProducts.value.isEmpty() || categoryId == null || currentProductId == null) {
+            try {
+                val response = apiService.getContentBasedRecommendations(productId.toInt(), 5)
+                if (response.isSuccessful) {
+                    val recommendationIds = response.body()?.recommendations ?: emptyList()
+                    val allProds = _allProducts.value
+                    if (allProds.isEmpty()) {
+                        _productDetailRecommendations.value = emptyList()
+                        return@launch
+                    }
+                    val recommendedProducts = recommendationIds.mapNotNull { id ->
+                        allProds.find { product -> product.id == id.toString() }
+                    }
+                    _productDetailRecommendations.value = recommendedProducts
+                } else {
+                    _productDetailRecommendations.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to fetch content-based recommendations", e)
                 _productDetailRecommendations.value = emptyList()
-                return@launch
             }
-            val basketProductIds = _basketItems.value.map { it.product.id }.toSet()
-            val potentialRecs = _allProducts.value.filter { product ->
-                product.categoryId == categoryId &&
-                        product.id != currentProductId &&
-                        !basketProductIds.contains(product.id) &&
-                        !_favoriteProducts.value.contains(product.id)
-            }
-            _productDetailRecommendations.value = potentialRecs.shuffled().take(3)
         }
     }
 

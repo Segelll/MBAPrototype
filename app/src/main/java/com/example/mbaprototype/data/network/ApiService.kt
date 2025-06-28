@@ -56,12 +56,18 @@ interface ApiService {
         @Query("top_k") topK: Int
     ): Response<RecommendationResponse>
 
-    /**
-     * Kullanıcının sepetine göre ürün tavsiyeleri alır.
-     */
     @GET("recommend/basket-similarity/{user_id}")
     suspend fun getBasketSimilarityRecommendations(
         @Path("user_id") userId: String,
+        @Query("top_k") topK: Int
+    ): Response<RecommendationResponse>
+
+    /**
+     * Belirtilen bir ürüne benzer diğer ürünleri tavsiye eder.
+     */
+    @GET("recommend/content-based/{product_no}")
+    suspend fun getContentBasedRecommendations(
+        @Path("product_no") productNo: Int,
         @Query("top_k") topK: Int
     ): Response<RecommendationResponse>
 }
