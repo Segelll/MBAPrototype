@@ -6,6 +6,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 // İstek (request) gövdesini temsil eden veri sınıfı
 data class InteractionRequest(
@@ -28,6 +29,11 @@ data class AddToBasketRequest(val product_no: Int)
 
 // Sepet listeleme yanıtındaki her bir ürünü temsil eden veri sınıfı
 data class BasketProduct(val product_no: Int)
+
+// Tavsiye yanıtını temsil eden veri sınıfı
+data class RecommendationResponse(
+    val recommendations: List<Int>
+)
 
 
 // API servis arayüzü
@@ -52,4 +58,13 @@ interface ApiService {
      */
     @GET("basket/items/")
     suspend fun getBasketItems(): Response<List<BasketProduct>>
+
+    /**
+     * Kullanıcıya özel işbirlikçi filtreleme ile ürün tavsiyeleri alır.
+     */
+    @GET("recommend/collaborative/{user_id}")
+    suspend fun getCollaborativeRecommendations(
+        @Path("user_id") userId: String,
+        @Query("top_k") topK: Int
+    ): Response<RecommendationResponse>
 }

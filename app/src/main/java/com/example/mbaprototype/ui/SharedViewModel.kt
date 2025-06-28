@@ -31,7 +31,6 @@ sealed interface ProductListItem {
 
 class SharedViewModel(application: Application) : AndroidViewModel(application) {
 
-    // ANA HATA DÜZELTMESİ: 'apiService' yerine 'instance' kullanıldı.
     private val apiService = RetrofitClient.instance
 
     private val _allProducts = MutableStateFlow<List<Product>>(emptyList())
@@ -117,6 +116,8 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadInitialData()
+        // Başlangıçta önerileri yükle
+        updateBasketRecommendations()
     }
 
     private fun loadInitialData() {
@@ -125,7 +126,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             _allCategories.value = DataSource.categories
             _pastPurchases.value = DataSource.pastPurchases
             _searchQuery.value = null
-            updateBasketRecommendations()
         }
     }
 
@@ -259,6 +259,33 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         return true
     }
 
+    private fun updateBasketRecommendations() {
+        viewModelScope.launch {
+            try {
+                // API dokümanındaki gibi 'user1' için 5 öneri alıyoruz.
+                val response = apiService.getCollaborativeRecommendations("user1", 5)
+                if (response.isSuccessful) {
+                    val recommendationIds = response.body()?.recommendations ?: emptyList()
+                    val allProds = _allProducts.value
+                    if (allProds.isEmpty()) {
+                        _basketRecommendations.value = emptyList()
+                        return@launch
+                    }
+                    // Gelen ID'leri tam ürün nesnelerine dönüştür.
+                    val recommendedProducts = recommendationIds.mapNotNull { id ->
+                        allProds.find { product -> product.id == id.toString() }
+                    }
+                    _basketRecommendations.value = recommendedProducts
+                } else {
+                    _basketRecommendations.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to fetch basket recommendations", e)
+                _basketRecommendations.value = emptyList()
+            }
+        }
+    }
+
     fun toggleFavorite(productId: String) {
         viewModelScope.launch {
             val isCurrentlyFavorite = _favoriteProducts.value.contains(productId)
@@ -316,20 +343,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     fun clearSearchOrFilter() {
         _searchQuery.value = null
         _selectedCategoryIdFromTab.value = null
-    }
-
-    private fun updateBasketRecommendations() {
-        viewModelScope.launch {
-            val basketProductIds = _basketItems.value.map { it.product.id }.toSet()
-            if (_allProducts.value.isEmpty()) {
-                _basketRecommendations.value = emptyList()
-                return@launch
-            }
-            val potentialRecs = _allProducts.value.filterNot { product ->
-                basketProductIds.contains(product.id) || _favoriteProducts.value.contains(product.id)
-            }
-            _basketRecommendations.value = potentialRecs.shuffled().take(5)
-        }
     }
 
     fun updateProductDetailRecommendations(categoryId: String?, currentProductId: String?) {
