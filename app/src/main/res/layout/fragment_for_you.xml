@@ -31,7 +31,7 @@
                     android:id="@+id/text_recommendations_title1"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="For You"
+                    android:text="Önerilenler"
                     android:textColor="?attr/colorOnSurface"
                     android:textSize="20sp"
                     android:textStyle="bold"

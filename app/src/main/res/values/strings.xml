@@ -38,7 +38,7 @@
 
     <string name="current_basket">Sepetim</string>
     <string name="remove_from_basket">Sepetten Kaldır</string>
-    <string name="recommendations_for_you">Sizin İçin Öneriler</string>
+    <string name="recommendations_for_you">Benzer Sepetler</string>
     <string name="quantity_prefix_basket">Adet: %d</string>
     <string name="quantity_prefix_details">x %d</string>
     <string name="your_basket_is_empty">Sepetiniz boş.</string>

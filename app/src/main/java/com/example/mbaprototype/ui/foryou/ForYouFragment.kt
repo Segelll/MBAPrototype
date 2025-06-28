@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mbaprototype.MBAPrototypeApplication
 import com.example.mbaprototype.R
@@ -30,9 +31,9 @@ class ForYouFragment : Fragment() {
         (requireActivity().application as MBAPrototypeApplication).sharedViewModel
     }
 
-    // Adapter'ların isimleri layout'a uygun olacak şekilde güncellendi
     private lateinit var forYouAdapter: ProductAdapter
     private lateinit var favoritesAdapter: ProductAdapter
+    private lateinit var seeAllAdapter: ProductAdapter // "See All" sayfası için yeni adapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -46,10 +47,11 @@ class ForYouFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerViews()
         observeViewModel()
+        setupClickListeners() // Buton dinleyicilerini ayarlayan fonksiyonu çağır
     }
 
     private fun setupRecyclerViews() {
-        // "For You" (Recommendations1) RecyclerView Adapter Kurulumu
+        // "For You" (Recommendations1) Adapter
         forYouAdapter = ProductAdapter(
             onProductClick = { product ->
                 sharedViewModel.trackProductClick(product.id)
@@ -68,13 +70,12 @@ class ForYouFragment : Fragment() {
             onCategoryChipSelected = {},
             sharedViewModel = sharedViewModel
         )
-        // DÜZELTME: Layout dosyasındaki doğru ID kullanıldı: recycler_view_recommendations1
         binding.recyclerViewRecommendations1.apply {
             adapter = forYouAdapter
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         }
 
-        // "Favorites" (Recommendations2) RecyclerView Adapter Kurulumu
+        // "Favorites" (Recommendations2) Adapter
         favoritesAdapter = ProductAdapter(
             onProductClick = { product ->
                 sharedViewModel.trackProductClick(product.id)
@@ -93,30 +94,66 @@ class ForYouFragment : Fragment() {
             onCategoryChipSelected = {},
             sharedViewModel = sharedViewModel
         )
-        // DÜZELTME: Layout dosyasındaki doğru ID kullanıldı: recycler_view_recommendations2
         binding.recyclerViewRecommendations2.apply {
             adapter = favoritesAdapter
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        }
+
+        // "See All" Adapter
+        seeAllAdapter = ProductAdapter(
+            onProductClick = { product ->
+                sharedViewModel.trackProductClick(product.id)
+                val intent = Intent(activity, ProductDetailActivity::class.java).apply {
+                    putExtra(ProductDetailActivity.EXTRA_PRODUCT, product)
+                }
+                startActivity(intent)
+            },
+            onAddToBasketClick = { product ->
+                sharedViewModel.addProductToBasket(product)
+                Snackbar.make(binding.root, "${product.name} ${getString(R.string.added_updated_in_basket)}", Snackbar.LENGTH_SHORT)
+                    .setAnchorView(activity?.findViewById(R.id.bottom_navigation_view))
+                    .show()
+            },
+            onCategoryHeaderClick = {},
+            onCategoryChipSelected = {},
+            sharedViewModel = sharedViewModel
+        )
+        binding.recyclerViewSeeAllOverlay.apply {
+            adapter = seeAllAdapter
+            layoutManager = GridLayoutManager(context, 2) // 2 sütunlu grid görünümü
+        }
+    }
+
+    private fun setupClickListeners() {
+        // "See All" butonuna tıklandığında overlay'i göster
+        binding.buttonSeeAll1.setOnClickListener {
+            binding.toolbarSeeAllOverlay.title = binding.textRecommendationsTitle1.text // Başlığı ayarla
+            binding.seeAllOverlay.isVisible = true
+        }
+
+        // Overlay'deki geri butonuna tıklandığında overlay'i gizle
+        binding.toolbarSeeAllOverlay.setNavigationOnClickListener {
+            binding.seeAllOverlay.isVisible = false
         }
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // "For You" önerilerini dinle ve ilgili UI bileşenlerini güncelle
+                // "Önerilenler" listesini dinle
                 launch {
                     sharedViewModel.forYouRecommendations.collect { products ->
                         val hasRecommendations = products.isNotEmpty()
-                        // DÜZELTME: Layout dosyasındaki doğru ID'ler kullanıldı.
                         binding.headerRow1.isVisible = hasRecommendations
                         binding.recyclerViewRecommendations1.isVisible = hasRecommendations
 
                         val items = products.map { ProductListItem.ProductItem(it) }
                         forYouAdapter.submitList(items)
+                        seeAllAdapter.submitList(items) // See All listesini de güncelle
                     }
                 }
 
-                // Favori ürünleri dinle ve ilgili UI bileşenlerini güncelle
+                // Favori ürünleri dinle
                 launch {
                     sharedViewModel.favoriteProducts.collect { favoriteIds ->
                         val favoriteProducts = favoriteIds.mapNotNull { id ->
@@ -124,10 +161,8 @@ class ForYouFragment : Fragment() {
                         }
 
                         val hasFavorites = favoriteProducts.isNotEmpty()
-                        // DÜZELTME: Layout dosyasındaki doğru ID'ler kullanıldı.
                         binding.headerRow2.isVisible = hasFavorites
                         binding.recyclerViewRecommendations2.isVisible = hasFavorites
-                        // Başlık metni de layout'a uygun olarak güncellendi.
                         binding.textRecommendationsTitle2.text = getString(R.string.favorites)
 
                         val items = favoriteProducts.map { product ->
@@ -141,9 +176,9 @@ class ForYouFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        // DÜZELTME: Doğru ID'ler kullanılarak adapter'lar null yapıldı.
         binding.recyclerViewRecommendations1.adapter = null
         binding.recyclerViewRecommendations2.adapter = null
+        binding.recyclerViewSeeAllOverlay.adapter = null // Adapter'ı null yap
         super.onDestroyView()
         _binding = null
     }

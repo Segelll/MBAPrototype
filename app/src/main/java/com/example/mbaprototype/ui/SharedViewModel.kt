@@ -135,7 +135,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     fun updateForYouRecommendations() {
         viewModelScope.launch {
             try {
-                val response = apiService.getCollaborativeRecommendations("user1", 10)
+                val response = apiService.getCollaborativeRecommendations("user1", 70)
                 if (response.isSuccessful) {
                     val recommendationIds = response.body()?.recommendations ?: emptyList()
                     val allProds = _allProducts.value
@@ -295,7 +295,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private fun updateBasketRecommendations() {
         viewModelScope.launch {
             try {
-                val response = apiService.getBasketSimilarityRecommendations("user1", 5)
+                val response = apiService.getBasketSimilarityRecommendations("user1", 35)
                 if (response.isSuccessful) {
                     val recommendationIds = response.body()?.recommendations ?: emptyList()
                     val allProds = _allProducts.value
@@ -383,7 +383,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
         viewModelScope.launch {
             try {
-                val response = apiService.getContentBasedRecommendations(productId.toInt(), 5)
+                val response = apiService.getContentBasedRecommendations(productId.toInt(), 17)
                 if (response.isSuccessful) {
                     val recommendationIds = response.body()?.recommendations ?: emptyList()
                     val allProds = _allProducts.value
