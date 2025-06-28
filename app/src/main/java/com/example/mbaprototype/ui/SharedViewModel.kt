@@ -119,6 +119,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadInitialData()
+        loadFavorites()
         updateBasketRecommendations()
         updateForYouRecommendations()
     }
@@ -129,6 +130,25 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             _allCategories.value = DataSource.categories
             _pastPurchases.value = DataSource.pastPurchases
             _searchQuery.value = null
+        }
+    }
+
+    /**
+     * API üzerinden favori ürünleri yükler ve durumu günceller.
+     */
+    fun loadFavorites() {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getFavoriteItems()
+                if (response.isSuccessful) {
+                    val favoriteItems = response.body() ?: emptyList()
+                    _favoriteProducts.value = favoriteItems.map { it.productNo.toString() }.toSet()
+                } else {
+                    Log.e("SharedViewModel", "Favoriler yüklenemedi: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Favoriler yüklenirken istisna oluştu", e)
+            }
         }
     }
 
@@ -206,7 +226,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     updateBasketRecommendations()
                     updateForYouRecommendations()
-                    // DEĞİŞİKLİK: Ürün detayı önerilerini güncellemek için yeni imza kullanıldı.
                     updateProductDetailRecommendations(product.id)
                 }
             } catch (e: Exception) {
@@ -317,30 +336,48 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Bir ürünün favori durumunu değiştirir.
+     * Eklemek için etkileşim kaydeder, silmek için API çağırır.
+     */
     fun toggleFavorite(productId: String) {
         viewModelScope.launch {
             val isCurrentlyFavorite = _favoriteProducts.value.contains(productId)
-            _favoriteProducts.update { currentFavorites ->
-                if (isCurrentlyFavorite) {
-                    currentFavorites - productId
-                } else {
-                    currentFavorites + productId
+
+            if (isCurrentlyFavorite) {
+                // FAVORİDEN ÇIKAR: DELETE API endpoint'ini çağır
+                try {
+                    val response = apiService.deleteFavorite(productId.toInt())
+                    if (response.isSuccessful) {
+                        // Başarılı olursa lokal durumu güncelle
+                        _favoriteProducts.update { currentFavorites ->
+                            currentFavorites - productId
+                        }
+                    } else {
+                        Log.e("SharedViewModel", "Favori silinemedi $productId: ${response.errorBody()?.string()}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("SharedViewModel", "Favori silinirken istisna oluştu $productId", e)
                 }
-            }
-            if (!isCurrentlyFavorite) {
+            } else {
+                // FAVORİYE EKLE: Mevcut InteractionLogger mantığını kullan
                 getProductById(productId)?.let { product ->
                     InteractionLogger.logInteraction(product, "favorites")
+                    // UI'ı anında yanıt vermesi için iyimser bir şekilde güncelle
+                    _favoriteProducts.update { currentFavorites ->
+                        currentFavorites + productId
+                    }
                 }
             }
         }
     }
+
 
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
             getProductById(productId)?.let { product ->
                 InteractionLogger.logInteraction(product, "click")
             }
-            // DEĞİŞİKLİK: Ürün detayı önerilerini güncellemek için yeni imza kullanıldı.
             updateProductDetailRecommendations(productId)
 
             _clickedProductIds.update { currentClicks ->
@@ -375,7 +412,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         _selectedCategoryIdFromTab.value = null
     }
 
-    // DEĞİŞİKLİK: Fonksiyon, artık content-based API'ı çağıracak şekilde yeniden yazıldı.
     fun updateProductDetailRecommendations(productId: String?) {
         if (productId == null) {
             _productDetailRecommendations.value = emptyList()

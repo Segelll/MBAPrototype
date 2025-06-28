@@ -7,7 +7,8 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-
+import com.example.mbaprototype.data.model.FavoriteActionResponse
+import com.example.mbaprototype.data.model.FavoriteItem
 // İstek (request) gövdesini temsil eden veri sınıfı
 data class InteractionRequest(
     val product_no: String,
@@ -70,4 +71,12 @@ interface ApiService {
         @Path("product_no") productNo: Int,
         @Query("top_k") topK: Int
     ): Response<RecommendationResponse>
+    @GET("favorites/items/")
+    suspend fun getFavoriteItems(): Response<List<FavoriteItem>>
+
+    /**
+     * Belirtilen ürünü favorilerden siler.
+     */
+    @DELETE("favorites/delete/{product_no}")
+    suspend fun deleteFavorite(@Path("product_no") productNo: Int): Response<FavoriteActionResponse>
 }
