@@ -114,10 +114,13 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _basketRecommendations = MutableStateFlow<List<Product>>(emptyList())
     val basketRecommendations: StateFlow<List<Product>> = _basketRecommendations.asStateFlow()
 
+    private val _forYouRecommendations = MutableStateFlow<List<Product>>(emptyList())
+    val forYouRecommendations: StateFlow<List<Product>> = _forYouRecommendations.asStateFlow()
+
     init {
         loadInitialData()
-        // Başlangıçta önerileri yükle
         updateBasketRecommendations()
+        updateForYouRecommendations()
     }
 
     private fun loadInitialData() {
@@ -126,6 +129,32 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             _allCategories.value = DataSource.categories
             _pastPurchases.value = DataSource.pastPurchases
             _searchQuery.value = null
+        }
+    }
+
+    // DEĞİŞİKLİK: Bu fonksiyon artık "collaborative" endpoint'ini çağırıyor.
+    fun updateForYouRecommendations() {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getCollaborativeRecommendations("user1", 10)
+                if (response.isSuccessful) {
+                    val recommendationIds = response.body()?.recommendations ?: emptyList()
+                    val allProds = _allProducts.value
+                    if (allProds.isEmpty()) {
+                        _forYouRecommendations.value = emptyList()
+                        return@launch
+                    }
+                    val recommendedProducts = recommendationIds.mapNotNull { id ->
+                        allProds.find { product -> product.id == id.toString() }
+                    }
+                    _forYouRecommendations.value = recommendedProducts
+                } else {
+                    _forYouRecommendations.value = emptyList()
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to fetch 'For You' recommendations", e)
+                _forYouRecommendations.value = emptyList()
+            }
         }
     }
 
@@ -177,6 +206,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
                     updateBasketRecommendations()
+                    updateForYouRecommendations()
                     updateProductDetailRecommendations(product.categoryId, product.id)
                 }
             } catch (e: Exception) {
@@ -208,6 +238,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             updateBasketRecommendations()
+            updateForYouRecommendations()
         }
     }
 
@@ -220,6 +251,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                         currentList.filterNot { it.product.id == productId }
                     }
                     updateBasketRecommendations()
+                    updateForYouRecommendations()
                 }
             } catch (e: Exception) {
                 Log.e("SharedViewModel", "Failed to remove product from basket", e)
@@ -255,15 +287,16 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             }
             _basketItems.value = emptyList()
             updateBasketRecommendations()
+            updateForYouRecommendations()
         }
         return true
     }
 
+    // DEĞİŞİKLİK: Bu fonksiyon artık "basket-similarity" endpoint'ini çağırıyor.
     private fun updateBasketRecommendations() {
         viewModelScope.launch {
             try {
-                // API dokümanındaki gibi 'user1' için 5 öneri alıyoruz.
-                val response = apiService.getCollaborativeRecommendations("user1", 5)
+                val response = apiService.getBasketSimilarityRecommendations("user1", 5)
                 if (response.isSuccessful) {
                     val recommendationIds = response.body()?.recommendations ?: emptyList()
                     val allProds = _allProducts.value
@@ -271,7 +304,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                         _basketRecommendations.value = emptyList()
                         return@launch
                     }
-                    // Gelen ID'leri tam ürün nesnelerine dönüştür.
                     val recommendedProducts = recommendationIds.mapNotNull { id ->
                         allProds.find { product -> product.id == id.toString() }
                     }

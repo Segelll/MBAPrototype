@@ -41,29 +41,26 @@ interface ApiService {
     @POST("interactions/")
     suspend fun postInteraction(@Body interaction: InteractionRequest): Response<InteractionResponse>
 
-    /**
-     * Sepete yeni bir ürün ekler.
-     */
     @POST("basket/add")
     suspend fun addToBasket(@Body request: AddToBasketRequest): Response<Unit>
 
-    /**
-     * Sepetten belirtilen ürünü siler.
-     */
     @DELETE("basket/delete/{product_no}")
     suspend fun deleteFromBasket(@Path("product_no") productNo: Int): Response<Unit>
 
-    /**
-     * Kullanıcının sepetindeki tüm ürünleri listeler.
-     */
     @GET("basket/items/")
     suspend fun getBasketItems(): Response<List<BasketProduct>>
 
-    /**
-     * Kullanıcıya özel işbirlikçi filtreleme ile ürün tavsiyeleri alır.
-     */
     @GET("recommend/collaborative/{user_id}")
     suspend fun getCollaborativeRecommendations(
+        @Path("user_id") userId: String,
+        @Query("top_k") topK: Int
+    ): Response<RecommendationResponse>
+
+    /**
+     * Kullanıcının sepetine göre ürün tavsiyeleri alır.
+     */
+    @GET("recommend/basket-similarity/{user_id}")
+    suspend fun getBasketSimilarityRecommendations(
         @Path("user_id") userId: String,
         @Query("top_k") topK: Int
     ): Response<RecommendationResponse>
