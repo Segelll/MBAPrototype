@@ -45,17 +45,19 @@ class BasketFragment : Fragment() {
         setupRecyclerViews()
         setupPurchaseButton()
         observeViewModel()
+
+        // Sepet ekranı her açıldığında verileri sunucudan yükle
+        sharedViewModel.loadBasket()
     }
 
     private fun setupRecyclerViews() {
         basketAdapter = BasketAdapter(
             onRemoveClick = { productId ->
                 sharedViewModel.removeProductFromBasket(productId)
-                // Optional: Show a Snackbar or Toast for removal
             },
             onIncreaseClick = { productId ->
                 val product = sharedViewModel.basketItems.value.find { it.product.id == productId }?.product
-                product?.let { sharedViewModel.addProductToBasket(it) } // addProductToBasket handles increment
+                product?.let { sharedViewModel.addProductToBasket(it) }
             },
             onDecreaseClick = { productId ->
                 sharedViewModel.decreaseBasketQuantity(productId)
@@ -64,10 +66,9 @@ class BasketFragment : Fragment() {
         binding.recyclerViewBasket.apply {
             adapter = basketAdapter
             layoutManager = LinearLayoutManager(context)
-            itemAnimator = null // Or use DefaultItemAnimator if you prefer
+            itemAnimator = null
         }
 
-        // Recommendations Adapter setup (using ProductAdapter)
         recommendationsAdapter = ProductAdapter(
             onProductClick = { product ->
                 sharedViewModel.trackProductClick(product.id)
@@ -84,7 +85,7 @@ class BasketFragment : Fragment() {
             },
             onCategoryHeaderClick = { /* Not used for horizontal recommendations */ },
             onCategoryChipSelected = { /* Not used */},
-            sharedViewModel = sharedViewModel // Pass ViewModel
+            sharedViewModel = sharedViewModel
         )
         binding.recyclerViewRecommendations.apply {
             adapter = recommendationsAdapter
@@ -119,13 +120,17 @@ class BasketFragment : Fragment() {
                         binding.recyclerViewBasket.isVisible = !isBasketEmpty
                         binding.buttonCompletePurchase.isEnabled = !isBasketEmpty
                         binding.purchaseBar.isVisible = !isBasketEmpty
-                        binding.dividerBasket.isVisible = !isBasketEmpty && binding.recyclerViewRecommendations.isVisible // Show divider only if both sections have content
+                        binding.dividerBasket.isVisible = !isBasketEmpty && binding.recyclerViewRecommendations.isVisible
                         binding.textBasketItemCount.text = getString(R.string.basket_item_count, items.sumOf { it.quantity })
-                        // Consider updating total price here if you were showing it
                     }
                 }
+                // DÜZELTME: Bu blok kaldırıldı çünkü textTotalPrice ID'si layout'ta yok.
+                // launch {
+                //    sharedViewModel.basketTotalCost.collect { total ->
+                //         binding.textTotalPrice.text = getString(R.string.total_price_formatted, total)
+                //    }
+                // }
                 launch {
-                    // Using basketRecommendations from SharedViewModel
                     sharedViewModel.basketRecommendations.collect { recommendedProducts ->
                         val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }
                         recommendationsAdapter.submitList(listItems)
@@ -133,7 +138,7 @@ class BasketFragment : Fragment() {
                         binding.textRecommendationsTitle.isVisible = hasRecommendations
                         binding.recyclerViewRecommendations.isVisible = hasRecommendations
                         binding.textEmptyRecommendations.isVisible = !hasRecommendations
-                        binding.dividerBasket.isVisible = !binding.textEmptyBasket.isVisible && hasRecommendations // Update divider based on recommendations too
+                        binding.dividerBasket.isVisible = !binding.textEmptyBasket.isVisible && hasRecommendations
                     }
                 }
             }

@@ -1,15 +1,17 @@
 package com.example.mbaprototype.ui
 
-import android.app.Application // Import Application
+import android.app.Application
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel // Change ViewModel to AndroidViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mbaprototype.data.DataSource
 import com.example.mbaprototype.data.model.BasketItem
 import com.example.mbaprototype.data.model.Category
 import com.example.mbaprototype.data.model.Product
 import com.example.mbaprototype.data.model.PurchaseHistory
-import com.example.mbaprototype.utils.InteractionLogger // Import InteractionLogger
+import com.example.mbaprototype.data.network.AddToBasketRequest
+import com.example.mbaprototype.data.network.RetrofitClient
+import com.example.mbaprototype.utils.InteractionLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,8 +29,10 @@ sealed interface ProductListItem {
     data class CategorySelectorItem(val categories: List<Category>, val selectedCategoryId: String?) : ProductListItem
 }
 
-// Change to AndroidViewModel to get Application context
 class SharedViewModel(application: Application) : AndroidViewModel(application) {
+
+    // ANA HATA DÜZELTMESİ: 'apiService' yerine 'instance' kullanıldı.
+    private val apiService = RetrofitClient.instance
 
     private val _allProducts = MutableStateFlow<List<Product>>(emptyList())
     private val _allCategories = MutableStateFlow<List<Category>>(emptyList())
@@ -40,15 +44,12 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _selectedCategoryIdFromTab = MutableStateFlow<String?>(null)
     val selectedCategoryIdFromTab: StateFlow<String?> = _selectedCategoryIdFromTab.asStateFlow()
 
-
     val categorizedProductList: StateFlow<List<ProductListItem>> = _searchQuery.map { queryOrCategoryId ->
         val productsToDisplay: List<Product>
         val categoriesToConsider: List<Category>
         val isDetailCategoryView = !queryOrCategoryId.isNullOrBlank()
-
         val currentProducts = _allProducts.value
         val currentCategories = _allCategories.value
-
         if (isDetailCategoryView) {
             val categoryById = currentCategories.find { it.id == queryOrCategoryId }
             if (categoryById != null) {
@@ -66,7 +67,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             productsToDisplay = currentProducts
             categoriesToConsider = currentCategories
         }
-
         val productListItems = categoriesToConsider.flatMap { category ->
             val productsInCategory = productsToDisplay.filter { it.categoryId == category.id }
             if (productsInCategory.isNotEmpty()) {
@@ -96,7 +96,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _basketItems = MutableStateFlow<List<BasketItem>>(emptyList())
     val basketItems: StateFlow<List<BasketItem>> = _basketItems.asStateFlow()
 
-    val basketTotalCost: StateFlow<Double> = _basketItems.map { 0.0 }
+    val basketTotalCost: StateFlow<Double> = _basketItems.map { items -> items.sumOf { (it.product.price ?: 0.0) * it.quantity } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
 
@@ -115,7 +115,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _basketRecommendations = MutableStateFlow<List<Product>>(emptyList())
     val basketRecommendations: StateFlow<List<Product>> = _basketRecommendations.asStateFlow()
 
-
     init {
         loadInitialData()
     }
@@ -130,70 +129,134 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun loadBasket() {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getBasketItems()
+                if (response.isSuccessful) {
+                    val remoteBasketProducts = response.body() ?: emptyList()
+                    val allProds = _allProducts.value
+                    if (allProds.isEmpty()) return@launch
+
+                    val productCounts = mutableMapOf<Int, Int>()
+                    for (basketProduct in remoteBasketProducts) {
+                        val currentCount = productCounts.getOrDefault(basketProduct.product_no, 0)
+                        productCounts[basketProduct.product_no] = currentCount + 1
+                    }
+
+                    val newBasketItems = mutableListOf<BasketItem>()
+                    for ((productId, quantity) in productCounts) {
+                        val foundProduct = allProds.find { product -> product.id == productId.toString() }
+                        if (foundProduct != null) {
+                            newBasketItems.add(BasketItem(product = foundProduct, quantity = quantity))
+                        }
+                    }
+                    _basketItems.value = newBasketItems
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to load basket", e)
+            }
+        }
+    }
+
+
     fun addProductToBasket(product: Product, quantityToAdd: Int = 1) {
         viewModelScope.launch {
-            _basketItems.update { currentList ->
-                val existingItemIndex = currentList.indexOfFirst { it.product.id == product.id }
-                if (existingItemIndex != -1) {
-                    val updatedItem = currentList[existingItemIndex].copy(
-                        quantity = currentList[existingItemIndex].quantity + quantityToAdd
-                    )
-                    currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
-                } else {
-                    currentList + BasketItem(product = product, quantity = quantityToAdd)
+            try {
+                val response = apiService.addToBasket(AddToBasketRequest(product.id.toInt()))
+                if (response.isSuccessful) {
+                    _basketItems.update { currentList ->
+                        val existingItemIndex = currentList.indexOfFirst { it.product.id == product.id }
+                        if (existingItemIndex != -1) {
+                            val updatedItem = currentList[existingItemIndex].copy(
+                                quantity = currentList[existingItemIndex].quantity + quantityToAdd
+                            )
+                            currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
+                        } else {
+                            currentList + BasketItem(product = product, quantity = quantityToAdd)
+                        }
+                    }
+                    updateBasketRecommendations()
+                    updateProductDetailRecommendations(product.categoryId, product.id)
                 }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to add product to basket", e)
             }
-            updateBasketRecommendations()
-            updateProductDetailRecommendations(product.categoryId, product.id)
         }
     }
 
     fun decreaseBasketQuantity(productId: String, quantityToDecrease: Int = 1) {
         viewModelScope.launch {
-            _basketItems.update { currentList ->
-                val existingItemIndex = currentList.indexOfFirst { it.product.id == productId }
-                if (existingItemIndex != -1) {
-                    val currentItem = currentList[existingItemIndex]
-                    if (currentItem.quantity > quantityToDecrease) {
-                        val updatedItem = currentItem.copy(quantity = currentItem.quantity - quantityToDecrease)
-                        currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
-                    } else {
-                        currentList.filterNot { it.product.id == productId }
-                    }
-                } else {
-                    currentList
-                }
-            }
-            updateBasketRecommendations()
-        }
-    }
-    fun updateBasketItemQuantity(productId: String, newQuantity: Int) {
-        viewModelScope.launch {
-            _basketItems.update { currentList ->
-                val existingItemIndex = currentList.indexOfFirst { it.product.id == productId }
-                if (existingItemIndex != -1) {
-                    if (newQuantity > 0) {
-                        val updatedItem = currentList[existingItemIndex].copy(quantity = newQuantity)
-                        currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }
-                    } else {
-                        currentList.filterNot { it.product.id == productId }
-                    }
-                } else {
-                    currentList
-                }
-            }
-            updateBasketRecommendations()
-        }
-    }
+            val currentItem = _basketItems.value.find { it.product.id == productId } ?: return@launch
 
+            if (currentItem.quantity > quantityToDecrease) {
+                _basketItems.update { currentList ->
+                    val existingItemIndex = currentList.indexOfFirst { it.product.id == productId }
+                    val updatedItem = currentItem.copy(quantity = currentItem.quantity - quantityToDecrease)
+                    currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }.toList()
+                }
+            } else {
+                try {
+                    val response = apiService.deleteFromBasket(productId.toInt())
+                    if (response.isSuccessful) {
+                        _basketItems.update { currentList ->
+                            currentList.filterNot { it.product.id == productId }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("SharedViewModel", "Failed to decrease/remove basket item", e)
+                }
+            }
+            updateBasketRecommendations()
+        }
+    }
 
     fun removeProductFromBasket(productId: String) {
         viewModelScope.launch {
-            _basketItems.update { currentList ->
-                currentList.filterNot { it.product.id == productId }
+            try {
+                val response = apiService.deleteFromBasket(productId.toInt())
+                if (response.isSuccessful) {
+                    _basketItems.update { currentList ->
+                        currentList.filterNot { it.product.id == productId }
+                    }
+                    updateBasketRecommendations()
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Failed to remove product from basket", e)
             }
+        }
+    }
+
+    fun completePurchase(): Boolean {
+        val currentBasket = _basketItems.value
+        if (currentBasket.isEmpty()) {
+            return false
+        }
+        viewModelScope.launch {
+            val newPurchase = PurchaseHistory(
+                purchaseId = UUID.randomUUID().toString(),
+                purchaseDate = Date(),
+                items = ArrayList(currentBasket)
+            )
+            _pastPurchases.update { currentHistory ->
+                listOf(newPurchase) + currentHistory
+            }
+
+            currentBasket.forEach { basketItem ->
+                InteractionLogger.logInteraction(
+                    basketItem.product,
+                    "bought"
+                )
+                try {
+                    apiService.deleteFromBasket(basketItem.product.id.toInt())
+                } catch (e: Exception) {
+                    Log.e("SharedViewModel", "Failed to delete item ${basketItem.product.id} from remote basket during purchase", e)
+                }
+            }
+            _basketItems.value = emptyList()
             updateBasketRecommendations()
         }
+        return true
     }
 
     fun toggleFavorite(productId: String) {
@@ -206,7 +269,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     currentFavorites + productId
                 }
             }
-            // Log interaction only when adding a favorite
             if (!isCurrentlyFavorite) {
                 getProductById(productId)?.let { product ->
                     InteractionLogger.logInteraction(product, "favorites")
@@ -217,12 +279,9 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
-            // Log interaction
             getProductById(productId)?.let { product ->
                 InteractionLogger.logInteraction(product, "click")
             }
-
-            // Existing logic for recommendations and clicked IDs
             val clickedProduct = _allProducts.value.find { it.id == productId }
             clickedProduct?.let {
                 updateProductDetailRecommendations(it.categoryId, it.id)
@@ -235,17 +294,14 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     fun searchProductsOrFilterByCategory(queryOrCategoryName: String?) {
         val category = _allCategories.value.find { it.name.equals(queryOrCategoryName, ignoreCase = true) }
-
         if (category != null) {
             _searchQuery.value = category.id
             _selectedCategoryIdFromTab.value = category.id
-            // InteractionLogger for search has been removed as it's not in the new API spec.
         } else {
             _searchQuery.value = queryOrCategoryName
             if (queryOrCategoryName.isNullOrBlank()){
                 _selectedCategoryIdFromTab.value = null
             }
-            // InteractionLogger for search has been removed.
         }
     }
 
@@ -254,8 +310,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         _searchQuery.value = categoryId
         if (categoryId == null) {
             clearSearchOrFilter()
-        } else {
-            // InteractionLogger for search has been removed.
         }
     }
 
@@ -263,7 +317,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         _searchQuery.value = null
         _selectedCategoryIdFromTab.value = null
     }
-
 
     private fun updateBasketRecommendations() {
         viewModelScope.launch {
@@ -296,36 +349,26 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun completePurchase(): Boolean {
-        val currentBasket = _basketItems.value
-        if (currentBasket.isEmpty()) {
-            return false
-        }
+    fun updateBasketItemQuantity(productId: String, newQuantity: Int) {
         viewModelScope.launch {
-            val newPurchase = PurchaseHistory(
-                purchaseId = UUID.randomUUID().toString(),
-                purchaseDate = Date(),
-                items = ArrayList(currentBasket)
-            )
-            _pastPurchases.update { currentHistory ->
-                listOf(newPurchase) + currentHistory
+            _basketItems.update { currentList ->
+                val existingItemIndex = currentList.indexOfFirst { it.product.id == productId }
+                if (existingItemIndex != -1) {
+                    if (newQuantity > 0) {
+                        val updatedItem = currentList[existingItemIndex].copy(quantity = newQuantity)
+                        currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }
+                    } else {
+                        currentList.filterNot { it.product.id == productId }
+                    }
+                } else {
+                    currentList
+                }
             }
-
-            // Log each purchased item with the "bought" interaction type
-            currentBasket.forEach { basketItem ->
-                InteractionLogger.logInteraction(
-                    basketItem.product,
-                    "bought"
-                )
-            }
-
-            _basketItems.value = emptyList()
             updateBasketRecommendations()
         }
-        return true
     }
 
-    // Helper methods
+
     fun getProductById(productId: String): Product? {
         if (_allProducts.value.isEmpty()) {
             Log.w("SharedViewModel", "getProductById called before products were loaded.")
