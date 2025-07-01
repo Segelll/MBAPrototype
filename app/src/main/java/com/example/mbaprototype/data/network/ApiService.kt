@@ -1,5 +1,7 @@
 package com.example.mbaprototype.data.network
 
+import com.example.mbaprototype.data.model.FavoriteActionResponse
+import com.example.mbaprototype.data.model.FavoriteItem
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -7,8 +9,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-import com.example.mbaprototype.data.model.FavoriteActionResponse
-import com.example.mbaprototype.data.model.FavoriteItem
+
 // İstek (request) gövdesini temsil eden veri sınıfı
 data class InteractionRequest(
     val product_no: String,
@@ -36,6 +37,12 @@ data class RecommendationResponse(
     val recommendations: List<Int>
 )
 
+// Sepeti tamamen silme işlemi için yanıt veri sınıfı
+data class DeleteAllBasketResponse(
+    val message: String?,
+    val detail: String?
+)
+
 
 // API servis arayüzü
 interface ApiService {
@@ -47,6 +54,12 @@ interface ApiService {
 
     @DELETE("basket/delete/{product_no}")
     suspend fun deleteFromBasket(@Path("product_no") productNo: Int): Response<Unit>
+
+    /**
+     * YENİ ENDPOINT: Belirtilen kullanıcının sepetindeki tüm ürünleri siler.
+     */
+    @DELETE("basket/delete-all/{user_id}")
+    suspend fun deleteAllFromBasket(@Path("user_id") userId: String): Response<DeleteAllBasketResponse>
 
     @GET("basket/items/")
     suspend fun getBasketItems(): Response<List<BasketProduct>>
@@ -71,6 +84,7 @@ interface ApiService {
         @Path("product_no") productNo: Int,
         @Query("top_k") topK: Int
     ): Response<RecommendationResponse>
+
     @GET("favorites/items/")
     suspend fun getFavoriteItems(): Response<List<FavoriteItem>>
 

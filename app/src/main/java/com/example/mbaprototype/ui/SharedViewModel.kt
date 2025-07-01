@@ -119,6 +119,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadInitialData()
+        loadBasket()
         loadFavorites()
         updateBasketRecommendations()
         updateForYouRecommendations()
@@ -283,7 +284,9 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         if (currentBasket.isEmpty()) {
             return false
         }
+
         viewModelScope.launch {
+            // Önce mevcut sepeti kullanarak satın alma geçmişini ve etkileşimleri kaydet
             val newPurchase = PurchaseHistory(
                 purchaseId = UUID.randomUUID().toString(),
                 purchaseDate = Date(),
@@ -298,15 +301,29 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     basketItem.product,
                     "bought"
                 )
-                try {
-                    apiService.deleteFromBasket(basketItem.product.id.toInt())
-                } catch (e: Exception) {
-                    Log.e("SharedViewModel", "Failed to delete item ${basketItem.product.id} from remote basket during purchase", e)
-                }
             }
-            _basketItems.value = emptyList()
-            updateBasketRecommendations()
-            updateForYouRecommendations()
+
+            // Ardından API üzerinden sepeti temizle
+            try {
+                val userId = "user1"
+                val response = apiService.deleteAllFromBasket(userId)
+                if (response.isSuccessful) {
+                    Log.d("SharedViewModel", "Remote basket cleared. Re-fetching to confirm.")
+
+                    // Sunucudan sepeti yeniden yükleyerek boş olduğunu teyit et.
+                    // loadBasket() çağrısı _basketItems StateFlow'unu tetikleyerek UI'ı günceller.
+                    loadBasket()
+
+                    // Tavsiyeleri de sepet boşaldıktan sonra güncelle
+                    updateBasketRecommendations()
+                    updateForYouRecommendations()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("SharedViewModel", "Failed to clear remote basket. Code: ${response.code()}, Error: $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.e("SharedViewModel", "Exception during clearing remote basket", e)
+            }
         }
         return true
     }
@@ -448,6 +465,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 if (existingItemIndex != -1) {
                     if (newQuantity > 0) {
                         val updatedItem = currentList[existingItemIndex].copy(quantity = newQuantity)
+                        // DÜZELTME: Hatalı referans 'existingItemİndex' -> 'existingItemIndex' olarak değiştirildi.
                         currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }
                     } else {
                         currentList.filterNot { it.product.id == productId }
