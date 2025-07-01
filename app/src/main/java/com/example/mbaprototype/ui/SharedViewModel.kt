@@ -296,19 +296,18 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 listOf(newPurchase) + currentHistory
             }
 
-            currentBasket.forEach { basketItem ->
-                InteractionLogger.logInteraction(
-                    basketItem.product,
-                    "bought"
-                )
-            }
+            // --- UPDATED LOGIC ---
+            // Log all purchased products in a single bulk API call
+            val purchasedProducts = currentBasket.map { it.product }
+            InteractionLogger.logBulkBoughtInteraction(purchasedProducts)
+            // --- END OF UPDATED LOGIC ---
 
             try {
                 val userId = "user1"
                 val response = apiService.deleteAllFromBasket(userId)
                 if (response.isSuccessful) {
                     Log.d("SharedViewModel", "Remote basket cleared. Re-fetching to confirm.")
-                    loadBasket()
+                    loadBasket() // This will clear local _basketItems upon successful API response
                     updateBasketRecommendations()
                     updateForYouRecommendations()
                 } else {

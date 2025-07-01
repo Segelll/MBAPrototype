@@ -26,6 +26,22 @@ data class InteractionResponse(
     val decayed_score: Double
 )
 
+/**
+ * Request body for the bulk interaction endpoint.
+ */
+data class BulkInteractionRequest(
+    val product_nos: List<Int>
+)
+
+/**
+ * Response body for the bulk interaction endpoint.
+ */
+data class BulkInteractionResponse(
+    val message: String,
+    val added_products: List<Int>
+)
+
+
 // Sepete ekleme isteği için veri sınıfı
 data class AddToBasketRequest(val product_no: Int)
 
@@ -48,6 +64,12 @@ data class DeleteAllBasketResponse(
 interface ApiService {
     @POST("interactions/")
     suspend fun postInteraction(@Body interaction: InteractionRequest): Response<InteractionResponse>
+
+    /**
+     * NEW ENDPOINT: Adds multiple 'bought' interactions in a single request.
+     */
+    @POST("interactions/add-bulk")
+    suspend fun addBulkInteractions(@Body request: BulkInteractionRequest): Response<BulkInteractionResponse>
 
     @POST("basket/add")
     suspend fun addToBasket(@Body request: AddToBasketRequest): Response<Unit>
