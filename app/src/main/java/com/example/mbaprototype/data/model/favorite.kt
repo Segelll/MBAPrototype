@@ -4,7 +4,8 @@ package com.example.mbaprototype.data.model
 import com.google.gson.annotations.SerializedName
 
 data class FavoriteItem(
-    @SerializedName("product_no") val productNo: Int
+    @SerializedName("product_no")
+    val productNo: Int
 )
 
 data class FavoriteActionResponse(

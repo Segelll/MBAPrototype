@@ -48,7 +48,7 @@ class FavoritesPageFragment : Fragment() {
             },
             onRemoveFavoriteClick = { productId ->
                 sharedViewModel.toggleFavorite(productId)
-                // Consider adding a Snackbar here for user feedback
+                // İsteğe bağlı olarak, kullanıcıya geri bildirim için bir Snackbar eklenebilir.
             }
         )
         binding.recyclerViewFavoritesPage.apply {
@@ -71,7 +71,7 @@ class FavoritesPageFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        binding.recyclerViewFavoritesPage.adapter = null // Clear adapter
+        binding.recyclerViewFavoritesPage.adapter = null // Hafıza sızıntılarını önlemek için adapter'ı temizle
         _binding = null
     }
 }
