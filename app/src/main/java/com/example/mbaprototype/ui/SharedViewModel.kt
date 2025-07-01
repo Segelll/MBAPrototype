@@ -117,12 +117,15 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     private val _forYouRecommendations = MutableStateFlow<List<Product>>(emptyList())
     val forYouRecommendations: StateFlow<List<Product>> = _forYouRecommendations.asStateFlow()
 
+    private val _forYouLoading = MutableStateFlow(false)
+    val forYouLoading: StateFlow<Boolean> = _forYouLoading.asStateFlow()
+
+
     init {
         loadInitialData()
         loadBasket()
         loadFavorites()
         updateBasketRecommendations()
-        updateForYouRecommendations()
     }
 
     private fun loadInitialData() {
@@ -132,9 +135,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         _searchQuery.value = null
     }
 
-    /**
-     * API üzerinden favori ürünleri yükler ve durumu günceller.
-     */
     fun loadFavorites() {
         viewModelScope.launch {
             try {
@@ -153,6 +153,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateForYouRecommendations() {
         viewModelScope.launch {
+            _forYouLoading.value = true
             try {
                 val response = apiService.getCollaborativeRecommendations("user1", 70)
                 if (response.isSuccessful) {
@@ -172,6 +173,8 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             } catch (e: Exception) {
                 Log.e("SharedViewModel", "Failed to fetch 'For You' recommendations", e)
                 _forYouRecommendations.value = emptyList()
+            } finally {
+                _forYouLoading.value = false
             }
         }
     }
@@ -284,7 +287,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         viewModelScope.launch {
-            // Önce mevcut sepeti kullanarak satın alma geçmişini ve etkileşimleri kaydet
             val newPurchase = PurchaseHistory(
                 purchaseId = UUID.randomUUID().toString(),
                 purchaseDate = Date(),
@@ -301,18 +303,12 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
 
-            // Ardından API üzerinden sepeti temizle
             try {
                 val userId = "user1"
                 val response = apiService.deleteAllFromBasket(userId)
                 if (response.isSuccessful) {
                     Log.d("SharedViewModel", "Remote basket cleared. Re-fetching to confirm.")
-
-                    // Sunucudan sepeti yeniden yükleyerek boş olduğunu teyit et.
-                    // loadBasket() çağrısı _basketItems StateFlow'unu tetikleyerek UI'ı günceller.
                     loadBasket()
-
-                    // Tavsiyeleri de sepet boşaldıktan sonra güncelle
                     updateBasketRecommendations()
                     updateForYouRecommendations()
                 } else {
@@ -352,19 +348,16 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Bir ürünün favori durumunu değiştirir.
-     * Eklemek için etkileşim kaydeder, silmek için API çağırır.
+     * Bir ürünün favori durumunu değiştirir ve ardından Sizin İçin önerilerini günceller.
      */
     fun toggleFavorite(productId: String) {
         viewModelScope.launch {
             val isCurrentlyFavorite = _favoriteProducts.value.contains(productId)
 
             if (isCurrentlyFavorite) {
-                // FAVORİDEN ÇIKAR: DELETE API endpoint'ini çağır
                 try {
                     val response = apiService.deleteFavorite(productId.toInt())
                     if (response.isSuccessful) {
-                        // Başarılı olursa lokal durumu güncelle
                         _favoriteProducts.update { currentFavorites ->
                             currentFavorites - productId
                         }
@@ -375,19 +368,22 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     Log.e("SharedViewModel", "Favori silinirken istisna oluştu $productId", e)
                 }
             } else {
-                // FAVORİYE EKLE: Mevcut InteractionLogger mantığını kullan
                 getProductById(productId)?.let { product ->
                     InteractionLogger.logInteraction(product, "favorites")
-                    // UI'ı anında yanıt vermesi için iyimser bir şekilde güncelle
                     _favoriteProducts.update { currentFavorites ->
                         currentFavorites + productId
                     }
                 }
             }
+
+            // GÜNCELLEME: Favori durumu değiştiğinde önerileri güncelle.
+            updateForYouRecommendations()
         }
     }
 
-
+    /**
+     * Ürün tıklamasını takip eder ve ardından Sizin İçin önerilerini günceller.
+     */
     fun trackProductClick(productId: String) {
         viewModelScope.launch {
             getProductById(productId)?.let { product ->
@@ -398,6 +394,9 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
             _clickedProductIds.update { currentClicks ->
                 (currentClicks + productId).toList().takeLast(20).toSet()
             }
+
+            // GÜNCELLEME: Ürün tıklandığında önerileri güncelle.
+            updateForYouRecommendations()
         }
     }
 
@@ -463,7 +462,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 if (existingItemIndex != -1) {
                     if (newQuantity > 0) {
                         val updatedItem = currentList[existingItemIndex].copy(quantity = newQuantity)
-                        // DÜZELTME: Hatalı referans 'existingItemİndex' -> 'existingItemIndex' olarak değiştirildi.
                         currentList.toMutableList().apply { set(existingItemIndex, updatedItem) }
                     } else {
                         currentList.filterNot { it.product.id == productId }

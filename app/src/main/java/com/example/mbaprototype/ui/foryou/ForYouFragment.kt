@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -36,10 +37,6 @@ class ForYouFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentForYouBinding.inflate(inflater, container, false)
-        // XML'deki ID'yi yeni ID ile değiştirin.
-        // Eğer `id 'recycler_view_recommendations1' is not a direct child of 'fragment_for_you'` hatası alırsanız,
-        // bunun nedeni muhtemelen `_binding`'in eski XML yapısını referans almasıdır.
-        // Projeyi temizleyip yeniden derlemek (`Clean and Rebuild Project`) bu sorunu çözecektir.
         return binding.root
     }
 
@@ -47,6 +44,11 @@ class ForYouFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sharedViewModel.updateForYouRecommendations()
     }
 
     private fun setupRecyclerView() {
@@ -77,16 +79,24 @@ class ForYouFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                sharedViewModel.forYouRecommendations.collect { products ->
-                    val items = products.map { ProductListItem.ProductItem(it) }
-                    recommendationsAdapter.submitList(items)
+                launch {
+                    sharedViewModel.forYouRecommendations.collect { products ->
+                        val items = products.map { ProductListItem.ProductItem(it) }
+                        recommendationsAdapter.submitList(items)
+                    }
+                }
+
+                launch {
+                    sharedViewModel.forYouLoading.collect { isLoading ->
+                        binding.progressBarForYou.isVisible = isLoading
+                        binding.recyclerViewRecommendations.isVisible = !isLoading
+                    }
                 }
             }
         }
     }
 
     override fun onDestroyView() {
-        // RecyclerView adapter'ını null yaparak memory leak'leri önleyin
         binding.recyclerViewRecommendations.adapter = null
         super.onDestroyView()
         _binding = null
