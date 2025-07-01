@@ -7,7 +7,7 @@ object RetrofitClient {
 
     // Android emülatöründen bilgisayarınızdaki localhost'a erişmek için 10.0.2.2 adresi kullanılır.
     // API dokümantasyonunuzdaki http://127.0.0.1:8000 adresine karşılık gelir.
-    private const val BASE_URL = "http://127.0.0.2:8000/"
+    private const val BASE_URL = "http://127.0.0.1:8000/"
 
     val instance: ApiService by lazy {
         val retrofit = Retrofit.Builder()

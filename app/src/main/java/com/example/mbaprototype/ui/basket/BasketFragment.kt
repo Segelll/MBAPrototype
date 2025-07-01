@@ -45,8 +45,14 @@ class BasketFragment : Fragment() {
         setupRecyclerViews()
         setupPurchaseButton()
         observeViewModel()
+    }
 
-        // Sepet ekranı her açıldığında verileri sunucudan yükle
+    // --- ÇÖZÜM: YENİ EKLENEN FONKSİYON ---
+    // Bu fonksiyon, sepet ekranı her açıldığında (kullanıcıya gösterildiğinde) çalışır.
+    // Bu noktada `loadBasket()` fonksiyonunu çağırmak,
+    // sepetin her zaman en güncel verilerle yüklenmesini sağlar ve zamanlama sorununu çözer.
+    override fun onResume() {
+        super.onResume()
         sharedViewModel.loadBasket()
     }
 
@@ -124,12 +130,6 @@ class BasketFragment : Fragment() {
                         binding.textBasketItemCount.text = getString(R.string.basket_item_count, items.sumOf { it.quantity })
                     }
                 }
-                // DÜZELTME: Bu blok kaldırıldı çünkü textTotalPrice ID'si layout'ta yok.
-                // launch {
-                //    sharedViewModel.basketTotalCost.collect { total ->
-                //         binding.textTotalPrice.text = getString(R.string.total_price_formatted, total)
-                //    }
-                // }
                 launch {
                     sharedViewModel.basketRecommendations.collect { recommendedProducts ->
                         val listItems = recommendedProducts.map { ProductListItem.ProductItem(it) }

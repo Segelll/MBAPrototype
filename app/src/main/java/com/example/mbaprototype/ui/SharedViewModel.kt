@@ -12,7 +12,6 @@ import com.example.mbaprototype.data.model.PurchaseHistory
 import com.example.mbaprototype.data.network.AddToBasketRequest
 import com.example.mbaprototype.data.network.RetrofitClient
 import com.example.mbaprototype.utils.InteractionLogger
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -119,32 +118,17 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
     val forYouRecommendations: StateFlow<List<Product>> = _forYouRecommendations.asStateFlow()
 
     init {
-        // --- GÜNCELLEME: YENİ VE DAHA SAĞLAM YAKLAŞIM ---
-        // 1. Önce `loadInitialData` fonksiyonunun başlattığı arkaplan işini (Job) alıyoruz.
-        val initialDataJob = loadInitialData()
-
-        // 2. Ardından, bu işin bitmesini bekleyecek yeni bir coroutine başlatıyoruz.
-        viewModelScope.launch {
-            // 3. `initialDataJob.join()` komutu, ürünlerin yüklenmesi bitene kadar bu noktada bekler.
-            initialDataJob.join()
-
-            // 4. Ürünler yüklendikten sonra, ona bağımlı olan diğer fonksiyonları güvenle çağırabiliriz.
-            // Bu, zamanlama (race condition) sorununu kalıcı olarak çözer.
-            loadBasket()
-            loadFavorites()
-            updateBasketRecommendations()
-            updateForYouRecommendations()
-        }
+        loadInitialData()
+        loadFavorites()
+        updateBasketRecommendations()
+        updateForYouRecommendations()
     }
 
-    // --- GÜNCELLEME: Fonksiyon artık başlattığı coroutine'in Job'ını döndürüyor.
-    private fun loadInitialData(): Job {
-        return viewModelScope.launch {
-            _allProducts.value = DataSource.products
-            _allCategories.value = DataSource.categories
-            _pastPurchases.value = DataSource.pastPurchases
-            _searchQuery.value = null
-        }
+    private fun loadInitialData() {
+        _allProducts.value = DataSource.products
+        _allCategories.value = DataSource.categories
+        _pastPurchases.value = DataSource.pastPurchases
+        _searchQuery.value = null
     }
 
     /**
