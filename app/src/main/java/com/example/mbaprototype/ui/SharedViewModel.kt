@@ -227,7 +227,6 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
                     updateBasketRecommendations()
-                    updateForYouRecommendations()
                     updateProductDetailRecommendations(product.id)
                 }
             } catch (e: Exception) {
@@ -259,7 +258,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             updateBasketRecommendations()
-            updateForYouRecommendations()
+
         }
     }
 
@@ -272,7 +271,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                         currentList.filterNot { it.product.id == productId }
                     }
                     updateBasketRecommendations()
-                    updateForYouRecommendations()
+
                 }
             } catch (e: Exception) {
                 Log.e("SharedViewModel", "Failed to remove product from basket", e)
@@ -309,7 +308,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                     Log.d("SharedViewModel", "Remote basket cleared. Re-fetching to confirm.")
                     loadBasket() // This will clear local _basketItems upon successful API response
                     updateBasketRecommendations()
-                    updateForYouRecommendations()
+
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("SharedViewModel", "Failed to clear remote basket. Code: ${response.code()}, Error: $errorBody")
@@ -375,8 +374,8 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            // GÜNCELLEME: Favori durumu değiştiğinde önerileri güncelle.
-            updateForYouRecommendations()
+
+
         }
     }
 
@@ -394,8 +393,8 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
                 (currentClicks + productId).toList().takeLast(20).toSet()
             }
 
-            // GÜNCELLEME: Ürün tıklandığında önerileri güncelle.
-            updateForYouRecommendations()
+
+
         }
     }
 
