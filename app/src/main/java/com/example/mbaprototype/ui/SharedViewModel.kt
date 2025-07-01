@@ -119,6 +119,7 @@ class SharedViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         loadInitialData()
+        loadBasket()
         loadFavorites()
         updateBasketRecommendations()
         updateForYouRecommendations()
