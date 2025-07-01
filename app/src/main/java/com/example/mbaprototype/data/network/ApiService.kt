@@ -49,8 +49,7 @@ interface ApiService {
     @POST("interactions/")
     suspend fun postInteraction(@Body interaction: InteractionRequest): Response<InteractionResponse>
 
-    // GÜNCELLEME: Sunucu uyumluluğu için adresin sonuna "/" eklendi.
-    @POST("basket/add/")
+    @POST("basket/add")
     suspend fun addToBasket(@Body request: AddToBasketRequest): Response<Unit>
 
     @DELETE("basket/delete/{product_no}")
